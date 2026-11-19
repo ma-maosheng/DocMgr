@@ -194,8 +194,6 @@ namespace DocMgr.Models.YearlyArchive
         public const string ForceVoidKindOverdueAuto = "OverdueAuto";
         public const string ForceVoidKindAdminManual = "AdminManual";
 
-        public const int DefaultApprovalDeadlineDays = 7;
-
         public static bool IsExternalDestination(string? destinationKind) =>
             string.Equals(destinationKind, DestinationExternal, StringComparison.Ordinal);
 

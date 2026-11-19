@@ -216,7 +216,10 @@ namespace DocMgr.Services.YearlyArchive
                 .DistinctBy(item => item.Id)
                 .ToList();
 
-            ValidateNewElectronicArchiveConstraints(archiveUnit, records);
+            ValidateNewElectronicArchiveConstraints(
+                archiveUnit,
+                records,
+                request.IsStockOpticalDiscDirectFiling);
 
             bool exists = await IsElectronicArchiveNoExistsAsync(archiveUnit.ElectronicArchiveNo);
             if (exists)

@@ -40,6 +40,8 @@ namespace DocMgr.ViewModels.Inventory
         private string _summaryText = "共 0 个容器";
         private string _contentSummaryText = "选择容器后显示内容明细";
         private readonly List<StockContainerOverviewRow> _sourceRows = new();
+        private int _totalCount;
+        private int _borrowedCount;
         private bool _isGlobalBrowse;
         private bool _isSwitchingBrowseMode;
         private int _pageSize = 50;
@@ -52,12 +54,12 @@ namespace DocMgr.ViewModels.Inventory
             _overviewService = overviewService;
             _dialogService = dialogService;
 
-            SearchCommand = new RelayCommand(async _ => await _pageDb.RunAsync(SearchAsync), _ => !IsBusy);
+            SearchCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => SearchAsync()), _ => !IsBusy);
             ResetCommand = new RelayCommand(_ => ResetCriteria(), _ => !IsBusy);
-            RefreshCommand = new RelayCommand(async _ => await _pageDb.RunAsync(SearchAsync), _ => !IsBusy);
+            RefreshCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => SearchAsync()), _ => !IsBusy);
             ExportCommand = new RelayCommand(
                 async _ => await _pageDb.RunAsync(ExportAsync),
-                _ => !IsBusy && _sourceRows.Count > 0);
+                _ => !IsBusy && _totalCount > 0);
             OpenFilingLedgerCommand = new RelayCommand(
                 _ => OpenFilingLedger(),
                 _ => SelectedContentItem is { SourceEntity: StockContainerContentSourceEntity.FilingFact, SourceId: > 0 });
@@ -320,8 +322,10 @@ namespace DocMgr.ViewModels.Inventory
 
                 _pageSize = value;
                 OnPropertyChanged();
-                CurrentPage = 1;
-                RefreshDisplayedRows();
+                if (_isInitialized)
+                {
+                    _ = _pageDb.RunAsync(() => SearchAsync(resetPage: true));
+                }
             }
         }
 
@@ -337,7 +341,7 @@ namespace DocMgr.ViewModels.Inventory
             }
         }
 
-        public int TotalCount => _sourceRows.Count;
+        public int TotalCount => _totalCount;
 
         public int TotalPages => TotalCount == 0 ? 1 : (int)Math.Ceiling(TotalCount / (double)PageSize);
 
@@ -351,7 +355,7 @@ namespace DocMgr.ViewModels.Inventory
 
         public bool CanGoNext => IsPagedBrowse && CurrentPage < TotalPages;
 
-        public bool ShowPaginationBar => IsPagedBrowse && _sourceRows.Count > 0;
+        public bool ShowPaginationBar => IsPagedBrowse && _totalCount > 0;
 
         public StockContainerOverviewRow? SelectedRow
         {
@@ -448,27 +452,48 @@ namespace DocMgr.ViewModels.Inventory
             }
         }
 
-        private async Task SearchAsync()
+        private Task SearchAsync() => SearchAsync(resetPage: true);
+
+        private async Task SearchAsync(bool resetPage)
         {
             IsBusy = true;
             BusyStatus = "正在查询库管容器…";
             try
             {
+                if (resetPage)
+                {
+                    _currentPage = 1;
+                }
+
                 var criteria = BuildCriteria();
-                var rows = await _overviewService.SearchContainersAsync(criteria);
+                criteria.PageNumber = _currentPage;
+                criteria.PageSize = IsGlobalBrowse ? 0 : _pageSize;
+                var result = await _overviewService.SearchContainersAsync(criteria);
+                if (!IsGlobalBrowse && criteria.PageSize > 0 && result.TotalCount > 0)
+                {
+                    int pages = (int)Math.Ceiling(result.TotalCount / (double)criteria.PageSize);
+                    if (criteria.PageNumber > pages)
+                    {
+                        _currentPage = pages;
+                        criteria.PageNumber = pages;
+                        result = await _overviewService.SearchContainersAsync(criteria);
+                    }
+                }
 
                 _sourceRows.Clear();
-                _sourceRows.AddRange(rows);
-                _currentPage = 1;
+                _sourceRows.AddRange(result.Rows);
+                _totalCount = result.TotalCount;
+                _borrowedCount = result.BorrowedCount;
                 OnPropertyChanged(nameof(CurrentPage));
 
                 SummaryText = BuildSummaryText(
-                    rows,
+                    _totalCount,
+                    _borrowedCount,
                     _selectedBrowseKind,
                     ignoredArchiveYear: !StockContainerBrowseKind.UsesArchiveYear(_selectedBrowseKind)
                         && !string.Equals(SelectedYear, AllYearsOption, StringComparison.Ordinal));
                 RefreshDisplayedRows(clearSelection: true);
-                ContentSummaryText = rows.Count == 0
+                ContentSummaryText = _totalCount == 0
                     ? "无匹配容器"
                     : "选择容器后显示内容明细";
             }
@@ -496,8 +521,12 @@ namespace DocMgr.ViewModels.Inventory
                 _isGlobalBrowse = isGlobal;
                 OnPropertyChanged(nameof(IsGlobalBrowse));
                 OnPropertyChanged(nameof(IsPagedBrowse));
-                CurrentPage = 1;
-                RefreshDisplayedRows();
+                _currentPage = 1;
+                OnPropertyChanged(nameof(CurrentPage));
+                if (_isInitialized)
+                {
+                    _ = _pageDb.RunAsync(() => SearchAsync(resetPage: true));
+                }
             }
             finally
             {
@@ -511,19 +540,6 @@ namespace DocMgr.ViewModels.Inventory
             int selectedId = clearSelection ? 0 : SelectedRow?.ContainerId ?? 0;
 
             IEnumerable<StockContainerOverviewRow> displayQuery = _sourceRows;
-            if (IsPagedBrowse && _sourceRows.Count > 0)
-            {
-                int page = Math.Clamp(CurrentPage, 1, TotalPages);
-                if (page != CurrentPage)
-                {
-                    _currentPage = page;
-                    OnPropertyChanged(nameof(CurrentPage));
-                }
-
-                displayQuery = _sourceRows
-                    .Skip((page - 1) * PageSize)
-                    .Take(PageSize);
-            }
 
             ContainerRows.Clear();
             foreach (var row in displayQuery)
@@ -548,8 +564,9 @@ namespace DocMgr.ViewModels.Inventory
 
         private void GoToPage(int page)
         {
-            CurrentPage = Math.Clamp(page, 1, TotalPages);
-            RefreshDisplayedRows();
+            _currentPage = Math.Clamp(page, 1, TotalPages);
+            OnPropertyChanged(nameof(CurrentPage));
+            _ = _pageDb.RunAsync(() => SearchAsync(resetPage: false));
         }
 
         private void NotifyPaginationChanged()
@@ -629,9 +646,12 @@ namespace DocMgr.ViewModels.Inventory
             BusyStatus = ExportIncludeContents ? "正在导出容器与明细…" : "正在导出容器列表…";
             try
             {
+                var criteria = BuildCriteria();
+                criteria.PageSize = 0;
+                StockContainerSearchResult result = await _overviewService.SearchContainersAsync(criteria);
                 await _overviewService.ExportAsync(
                     filePath,
-                    _sourceRows.ToList(),
+                    result.Rows,
                     ExportIncludeContents,
                     SelectedBrowseKind);
                 _dialogService.ShowMessage($"库管资料总览导出完成：\n{filePath}", "完成");
@@ -793,15 +813,15 @@ namespace DocMgr.ViewModels.Inventory
         }
 
         private static string BuildSummaryText(
-            IReadOnlyList<StockContainerOverviewRow> rows,
+            int totalCount,
+            int borrowedCount,
             string browseKind,
             bool ignoredArchiveYear)
         {
             string label = StockContainerBrowseKind.MapDisplay(browseKind);
-            int borrowed = rows.Count(row => row.HasBorrowedContent);
             string text = StockContainerBrowseKind.UsesArchiveYear(browseKind)
-                ? $"共 {rows.Count} 个{label}（含借出 {borrowed}）"
-                : $"共 {rows.Count} 个{label}";
+                ? $"共 {totalCount} 个{label}（含借出 {borrowedCount}）"
+                : $"共 {totalCount} 个{label}";
             if (ignoredArchiveYear)
             {
                 text += "（未按档案年度筛选）";
@@ -836,7 +856,7 @@ namespace DocMgr.ViewModels.Inventory
 
             if (_isInitialized && !_suppressBrowseKindSearch)
             {
-                _ = _pageDb.RunAsync(SearchAsync);
+                _ = _pageDb.RunAsync(() => SearchAsync());
             }
         }
 
@@ -848,6 +868,8 @@ namespace DocMgr.ViewModels.Inventory
             SelectedContentItem = null;
             SelectedRow = null;
             _currentPage = 1;
+            _totalCount = 0;
+            _borrowedCount = 0;
             SummaryText = "共 0 个容器";
             ContentSummaryText = "选择容器后显示内容明细";
             NotifyPaginationChanged();

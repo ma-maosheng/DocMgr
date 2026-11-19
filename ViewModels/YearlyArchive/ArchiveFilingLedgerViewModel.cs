@@ -46,6 +46,12 @@ namespace DocMgr.ViewModels.YearlyArchive
         private string _selectedYear = DateTime.Now.Year.ToString();
         private string _selectedImplementYear = ProjectFilterOptionFactory.AllImplementYearsOption;
         private readonly List<FilingLedgerRow> _sourceRows = new();
+        private int _pageSize = 100;
+        private int _currentPage = 1;
+        private int _totalCount;
+        private int _simulatedCount;
+        private int _electronicCount;
+        private int _backupCount;
         private readonly HashSet<string> _expandedFoldGroupKeys = new(StringComparer.Ordinal);
         private string _selectedFoldField = FoldFieldFormNo;
         private int? _selectedProjectId;
@@ -80,10 +86,14 @@ namespace DocMgr.ViewModels.YearlyArchive
             _dialogService = dialogService;
             _scopeFactory = scopeFactory;
 
-            SearchCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => SearchAsync()), _ => !IsBusy);
+            SearchCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => SearchFromStartAsync()), _ => !IsBusy);
             ResetCommand = new RelayCommand(_ => ResetCriteria(), _ => !IsBusy);
-            RefreshCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => SearchAsync()), _ => !IsBusy);
-            ExportCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ExportAsync), _ => !IsBusy && _sourceRows.Count > 0);
+            RefreshCommand = new RelayCommand(async _ => await _pageDb.RunAsync(() => SearchFromStartAsync()), _ => !IsBusy);
+            ExportCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ExportAsync), _ => !IsBusy && _totalCount > 0);
+            FirstPageCommand = new RelayCommand(_ => GoToPage(1), _ => CanGoPrevious);
+            PreviousPageCommand = new RelayCommand(_ => GoToPage(CurrentPage - 1), _ => CanGoPrevious);
+            NextPageCommand = new RelayCommand(_ => GoToPage(CurrentPage + 1), _ => CanGoNext);
+            LastPageCommand = new RelayCommand(_ => GoToPage(TotalPages), _ => CanGoNext);
             ViewRegisterDetailCommand = new RelayCommand(
                 _ => ViewRegisterDetail(),
                 _ => SelectedRow != null && SelectedRow.RegisterRecordId > 0);
@@ -438,6 +448,51 @@ namespace DocMgr.ViewModels.YearlyArchive
         public bool HasContentEntryKeywordHighlight =>
             !string.IsNullOrWhiteSpace(_appliedContentEntryKeyword);
 
+        public IReadOnlyList<int> PageSizeOptions { get; } = [50, 100, 200, 500];
+
+        public int PageSize
+        {
+            get => _pageSize;
+            set
+            {
+                if (value <= 0 || _pageSize == value)
+                {
+                    return;
+                }
+
+                _pageSize = value;
+                OnPropertyChanged();
+                if (_isInitialized)
+                {
+                    _ = _pageDb.RunAsync(SearchFromStartAsync);
+                }
+            }
+        }
+
+        public int CurrentPage => _currentPage;
+
+        public int TotalCount => _totalCount;
+
+        public int TotalPages => _totalCount == 0 ? 1 : (int)Math.Ceiling(_totalCount / (double)_pageSize);
+
+        public string PageInfo => _totalCount == 0
+            ? "暂无记录"
+            : $"第 {_currentPage} / {TotalPages} 页，本页 {_sourceRows.Count} 条，共 {_totalCount} 条";
+
+        public bool CanGoPrevious => _currentPage > 1;
+
+        public bool CanGoNext => _currentPage < TotalPages;
+
+        public bool ShowPaginationBar => _totalCount > 0;
+
+        public RelayCommand FirstPageCommand { get; }
+
+        public RelayCommand PreviousPageCommand { get; }
+
+        public RelayCommand NextPageCommand { get; }
+
+        public RelayCommand LastPageCommand { get; }
+
         public RelayCommand SearchCommand { get; }
         public RelayCommand ResetCommand { get; }
         public RelayCommand RefreshCommand { get; }
@@ -596,7 +651,11 @@ namespace DocMgr.ViewModels.YearlyArchive
                 }
 
                 await LoadProjectOptionsAsync();
-                await SearchAsync(filingFactId);
+                var pageCriteria = BuildCriteria();
+                pageCriteria.PageSize = _pageSize;
+                int ahead = await _ledgerService.CountRowsBeforeAsync(pageCriteria, target.FiledAt, target.FilingFactId);
+                _currentPage = _pageSize <= 0 ? 1 : ahead / _pageSize + 1;
+                await SearchAsync();
                 SelectedRow = LedgerRows.FirstOrDefault(row => row.FilingFactId == filingFactId)
                     ?? _sourceRows.FirstOrDefault(row => row.FilingFactId == filingFactId)
                     ?? target;
@@ -708,6 +767,18 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
         }
 
+        private Task SearchFromStartAsync()
+        {
+            _currentPage = 1;
+            return SearchAsync();
+        }
+
+        private void GoToPage(int page)
+        {
+            _currentPage = Math.Clamp(page, 1, TotalPages);
+            _ = _pageDb.RunAsync(() => SearchAsync());
+        }
+
         private async Task SearchAsync(int? focusFilingFactId = null)
         {
             await WithBusyAsync("正在查询立档记录…", () => SearchCoreAsync(focusFilingFactId));
@@ -719,8 +790,26 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 int? selectedId = focusFilingFactId ?? SelectedRow?.FilingFactId;
                 var criteria = BuildCriteria();
+                criteria.PageNumber = _currentPage;
+                criteria.PageSize = focusFilingFactId is > 0 ? 0 : _pageSize;
                 await ReportBusyAsync("正在查询立档记录…");
-                var rows = await QueryOnBackgroundAsync(service => service.SearchAsync(criteria));
+                var page = await QueryOnBackgroundAsync(service => service.SearchPageAsync(criteria));
+                if (criteria.PageSize > 0 && page.TotalCount > 0)
+                {
+                    int pages = (int)Math.Ceiling(page.TotalCount / (double)criteria.PageSize);
+                    if (criteria.PageNumber > pages)
+                    {
+                        _currentPage = pages;
+                        criteria.PageNumber = pages;
+                        page = await QueryOnBackgroundAsync(service => service.SearchPageAsync(criteria));
+                    }
+                }
+
+                _totalCount = page.TotalCount;
+                _simulatedCount = page.SimulatedCount;
+                _electronicCount = page.ElectronicCount;
+                _backupCount = page.BackupCount;
+                var rows = page.Rows;
 
                 await ReportBusyAsync("正在整理折叠列表…");
                 string foldField = _selectedFoldField;
@@ -990,6 +1079,8 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 Year = ResolveSelectedArchiveYear(),
                 ProjectId = SelectedProjectId,
+                PageNumber = _currentPage,
+                PageSize = _pageSize,
                 MediaKind = SelectedMediaKind?.Trim() ?? string.Empty,
                 FilingMethod = SelectedFilingMethod?.Trim() ?? string.Empty,
                 HandlingForm = SelectedHandlingForm?.Trim() ?? string.Empty,
@@ -1006,26 +1097,26 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private void UpdateSummary()
         {
-            int simulatedCount = _sourceRows.Count(row => string.Equals(
-                row.MediaKind,
-                ArchiveRegisterDomainValues.MediaKindSimulated,
-                StringComparison.Ordinal));
-            int electronicCount = _sourceRows.Count(row => string.Equals(
-                row.MediaKind,
-                ArchiveRegisterDomainValues.MediaKindElectronic,
-                StringComparison.Ordinal));
-            int backupCount = _sourceRows.Count(row => string.Equals(
-                row.ArchiveCopyRole,
-                FilingFactArchiveCopyRole.Backup,
-                StringComparison.Ordinal));
-
-            string summary = $"共 {_sourceRows.Count} 条（模拟 {simulatedCount} / 电子 {electronicCount}，备份 {backupCount}）";
+            string summary = $"共 {_totalCount} 条（模拟 {_simulatedCount} / 电子 {_electronicCount}，备份 {_backupCount}）";
             if (LedgerRows.Count < _sourceRows.Count)
             {
-                summary += $"；折叠后显示 {LedgerRows.Count} 行";
+                summary += $"；本页折叠后显示 {LedgerRows.Count} 行";
             }
 
             SummaryText = summary;
+            NotifyPaginationChanged();
+        }
+
+        private void NotifyPaginationChanged()
+        {
+            OnPropertyChanged(nameof(CurrentPage));
+            OnPropertyChanged(nameof(TotalCount));
+            OnPropertyChanged(nameof(TotalPages));
+            OnPropertyChanged(nameof(PageInfo));
+            OnPropertyChanged(nameof(CanGoPrevious));
+            OnPropertyChanged(nameof(CanGoNext));
+            OnPropertyChanged(nameof(ShowPaginationBar));
+            CommandManager.InvalidateRequerySuggested();
         }
 
         private async Task LoadSelectedDetailAsync()
@@ -1269,7 +1360,13 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(HasFoldableGroups));
             OnPropertyChanged(nameof(FoldAllButtonText));
             OnPropertyChanged(nameof(FoldAllButtonToolTip));
+            _totalCount = 0;
+            _simulatedCount = 0;
+            _electronicCount = 0;
+            _backupCount = 0;
+            _currentPage = 1;
             SummaryText = "共 0 条";
+            NotifyPaginationChanged();
             DetailSummary = string.Empty;
             CommandManager.InvalidateRequerySuggested();
         }
@@ -1299,7 +1396,10 @@ namespace DocMgr.ViewModels.YearlyArchive
             _dialogService.SetBusyState(true);
             try
             {
-                await _ledgerService.ExportAsync(filePath, _sourceRows.ToList());
+                var criteria = BuildCriteria();
+                criteria.PageSize = 0;
+                FilingLedgerSearchPage page = await _ledgerService.SearchPageAsync(criteria);
+                await _ledgerService.ExportAsync(filePath, page.Rows);
                 _dialogService.ShowMessage($"立档台账导出完成：\n{filePath}", "完成");
             }
             catch (ArgumentException ex)

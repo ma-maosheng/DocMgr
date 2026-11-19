@@ -24,10 +24,16 @@ namespace DocMgr.Models.YearlyArchive
 
         public string ProvideUnit { get; init; } = string.Empty;
 
-        /// <summary>true 表示按文件夹指派。</summary>
+        /// <summary>true 表示所属目录一类资料：所选目录是资料名称，子目录是资料子项。</summary>
         public bool AssignByFolder { get; init; }
 
-        /// <summary>true 表示按后缀指派。与 <see cref="AssignByFolder"/> 互斥。</summary>
+        /// <summary>true 表示所属目录一个项目：子目录是资料名称，再下一级是资料子项。</summary>
+        public bool AssignByProject { get; init; }
+
+        /// <summary>true 表示所属目录一个年度：子目录是项目，再下一级是资料名称，再下一级是资料子项。</summary>
+        public bool AssignByYear { get; init; }
+
+        /// <summary>true 表示按文件后缀指派资料子项。与目录层级指派互斥。</summary>
         public bool AssignByExtension { get; init; }
 
         /// <summary>未纳入的文件夹、散文件或后缀已被确认忽略。</summary>
@@ -37,13 +43,13 @@ namespace DocMgr.Models.YearlyArchive
 
         public int ExcludedFolderCount { get; init; }
 
-        /// <summary>按后缀指派时未勾选纳入的后缀数。</summary>
+        /// <summary>按文件后缀指派资料子项时未勾选纳入的后缀数。</summary>
         public int ExcludedExtensionCount { get; init; }
 
-        /// <summary>按后缀指派时，资料所属目录下的一级文件夹数。这些文件夹不进入后缀子项。</summary>
+        /// <summary>按文件后缀指派资料子项时，资料所属目录下的一级文件夹数。这些文件夹不进入后缀子项。</summary>
         public int IgnoredFolderCount { get; init; }
 
-        /// <summary>按后缀指派时，资料所属目录下的无后缀文件数。</summary>
+        /// <summary>按文件后缀指派资料子项时，资料所属目录下的无后缀文件数。</summary>
         public int ExtensionlessFileCount { get; init; }
 
         /// <summary>
@@ -58,6 +64,9 @@ namespace DocMgr.Models.YearlyArchive
     public sealed class StockOpticalDiscMaterialDraft
     {
         public string MaterialName { get; init; } = string.Empty;
+
+        /// <summary>所属目录一个年度时的项目名称。空则沿用请求上的项目。</summary>
+        public string ProjectName { get; init; } = string.Empty;
 
         public IReadOnlyList<StockOpticalDiscItemDraft> Items { get; init; } = Array.Empty<StockOpticalDiscItemDraft>();
     }

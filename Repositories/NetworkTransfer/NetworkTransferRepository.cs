@@ -714,16 +714,43 @@ public sealed class NetworkTransferRepository : INetworkTransferRepository
             .ToListAsync();
     }
 
-    public Task<List<SystemAttachment>> GetAttachmentsAsync(string businessType, string businessNo)
+    public async Task<List<SystemAttachment>> GetAttachmentsAsync(string businessType, string businessNo)
     {
         string type = businessType?.Trim() ?? string.Empty;
         string no = businessNo?.Trim() ?? string.Empty;
-        return _dbContext.SystemAttachments
+        var rows = await _dbContext.SystemAttachments
             .AsNoTracking()
             .Where(item => item.BusinessType == type && item.BusinessNo == no)
             .OrderByDescending(item => item.UploadTime)
             .ThenByDescending(item => item.Id)
+            .Select(item => new
+            {
+                item.Id,
+                item.BusinessType,
+                item.BusinessNo,
+                item.BusinessId,
+                item.FileName,
+                item.Extension,
+                item.FileSize,
+                item.FileCategory,
+                item.UploadTime,
+                item.UploaderName
+            })
             .ToListAsync();
+
+        return rows.Select(item => new SystemAttachment
+        {
+            Id = item.Id,
+            BusinessType = item.BusinessType,
+            BusinessNo = item.BusinessNo,
+            BusinessId = item.BusinessId,
+            FileName = item.FileName,
+            Extension = item.Extension,
+            FileSize = item.FileSize,
+            FileCategory = item.FileCategory,
+            UploadTime = item.UploadTime,
+            UploaderName = item.UploaderName
+        }).ToList();
     }
 
     public Task<SystemAttachment?> GetAttachmentByIdAsync(int attachmentId) =>

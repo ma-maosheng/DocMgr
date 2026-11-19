@@ -78,8 +78,20 @@ public sealed class ApplicationRequestHeaderModel : ViewModelBase
     public bool CanEdit
     {
         get => _canEdit;
-        set => SetProperty(ref _canEdit, value);
+        set
+        {
+            if (SetProperty(ref _canEdit, value))
+            {
+                OnPropertyChanged(nameof(CanEditForm));
+            }
+        }
     }
+
+    /// <summary>
+    /// 与 <see cref="CanEdit"/> 相同。立档表单样式按最近一层 UserControl 的 DataContext.CanEditForm 切换只读，
+    /// 申请信息区的数据上下文是本模型，需要这个名字才能命中。
+    /// </summary>
+    public bool CanEditForm => CanEdit;
 
     /// <summary>申请日期是否可改。入网申请的日期由系统写入，保持只读。</summary>
     public bool CanEditApplicationDate

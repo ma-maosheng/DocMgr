@@ -270,5 +270,21 @@ public sealed class HardDiskInventoryRegisterRepository : IHardDiskInventoryRegi
 
     public Task SaveChangesAsync() => _dbContext.SaveChangesAsync();
 
+    public async Task ExecuteInTransactionAsync(Func<Task> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync();
+        try
+        {
+            await action();
+            await transaction.CommitAsync();
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+    }
+
     public void ClearChangeTracker() => _dbContext.ChangeTracker.Clear();
 }

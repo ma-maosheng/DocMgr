@@ -163,10 +163,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             HandoverDate = record.HandoverDate ?? today;
 
             OnPropertyChanged(nameof(ApproveHintText));
-            OnPropertyChanged(nameof(ReviewerFieldLabel));
-            OnPropertyChanged(nameof(ApproverFieldLabel));
-            OnPropertyChanged(nameof(ShowIntactApprovalSigner));
-            OnPropertyChanged(nameof(ShowLossApprovalSigners));
+            NotifyShellAliasPropertiesChanged();
         }
 
         /// <summary>
@@ -221,10 +218,8 @@ namespace DocMgr.ViewModels.YearlyArchive
                     ? (ProductionVicePresidentDate ?? record.ProductionVicePresidentDate ?? today)
                     : null;
 
-                OnPropertyChanged(nameof(ShowIntactApprovalSigner));
-                OnPropertyChanged(nameof(ShowLossApprovalSigners));
-                OnPropertyChanged(nameof(ReviewerFieldLabel));
-                OnPropertyChanged(nameof(ApproverFieldLabel));
+                OnPropertyChanged(nameof(ApproveHintText));
+                NotifyShellAliasPropertiesChanged();
             }
             finally
             {

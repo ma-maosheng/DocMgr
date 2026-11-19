@@ -6,8 +6,9 @@ using System.Linq;
 namespace DocMgr.Models.YearlyArchive
 {
     /// <summary>
-    /// 存量光盘目录扫描。不要求盘上存在「年度/项目/资料/子项」，只列出根目录与一级业务文件夹，供操作员指派编目身份。
-    /// 所属目录一个子项和按文件夹指派共用同一套目录统计：子文件夹合计来自其子树，整盘合计来自一级文件夹与根目录散文件。按后缀指派另做统计，不改这两套结果。
+    /// 存量光盘目录扫描。所属目录可以对应子项、资料名称、项目或年度，更深的层级另行列出。
+    /// 所属目录一个子项和所属目录一类资料共用同一套目录统计：子文件夹合计来自其子树，整盘合计来自一级文件夹与根目录散文件。
+    /// 所属目录一个项目、所属目录一个年度、按文件后缀指派资料子项另做统计，不改这两套结果。
     /// </summary>
     public static class StockOpticalDiscDirectFilingDirectorySupport
     {
@@ -41,7 +42,7 @@ namespace DocMgr.Models.YearlyArchive
         };
 
         /// <summary>
-        /// 扫描光盘根目录。年度与项目由页面填写，不从文件夹名推断。
+        /// 扫描资料所属目录。一类资料只用一级文件夹；一个项目、一个年度再向下取子目录。
         /// </summary>
         public static StockOpticalDiscDirectoryScanResult ScanRoot(string? rootPath)
         {
@@ -64,7 +65,7 @@ namespace DocMgr.Models.YearlyArchive
                 if (looseFiles.Count > 0)
                 {
                     warnings.Add(
-                        $"资料所属目录有 {looseFiles.Count} 个散文件。所属目录一个子项会把它们记入「{WholeDiscItemName}」；按文件夹指派时这些散文件不建子项；按后缀指派时，带后缀的散文件各成一个子项。");
+                        $"资料所属目录有 {looseFiles.Count} 个散文件。所属目录一个子项会把它们记入「{WholeDiscItemName}」；所属目录一类资料、一个项目、一个年度不把这些散文件建成资料或子项；按文件后缀指派资料子项时，带后缀的散文件各成一个子项。");
                 }
 
                 string defaultMaterialName = ResolveDefaultMaterialName(root);
@@ -88,8 +89,11 @@ namespace DocMgr.Models.YearlyArchive
                 var extensionDrafts = CollectExtensionDrafts(root, defaultMaterialName, out int extensionlessFileCount);
                 if (extensionlessFileCount > 0)
                 {
-                    warnings.Add($"资料所属目录及其子目录有 {extensionlessFileCount} 个无后缀文件。按后缀指派时不建子项，确认前须勾选忽略。");
+                    warnings.Add($"资料所属目录及其子目录有 {extensionlessFileCount} 个无后缀文件。按文件后缀指派资料子项时不建子项，确认前须勾选忽略。");
                 }
+
+                var hierarchy = CollectHierarchyDrafts(root, folders, looseFiles.Count);
+                warnings.AddRange(hierarchy.Warnings);
 
                 return new StockOpticalDiscDirectoryScanResult
                 {
@@ -97,9 +101,13 @@ namespace DocMgr.Models.YearlyArchive
                     RootPath = root,
                     DefaultMaterialName = defaultMaterialName,
                     LooseFileCount = looseFiles.Count,
+                    ProjectLooseFileCount = hierarchy.ProjectLooseFileCount,
+                    YearLooseFileCount = hierarchy.YearLooseFileCount,
                     ExtensionlessFileCount = extensionlessFileCount,
                     WholeDisc = wholeDisc,
                     Folders = folderSnapshots.Select(item => item.Draft).ToList(),
+                    ProjectItems = hierarchy.ProjectItems,
+                    YearItems = hierarchy.YearItems,
                     Extensions = extensionDrafts,
                     Warnings = warnings
                 };
@@ -215,7 +223,7 @@ namespace DocMgr.Models.YearlyArchive
         }
 
         /// <summary>
-        /// 单独扫描后缀。不改写所属目录一个子项、按文件夹指派使用的文件数、目录明细和数据量。
+        /// 单独扫描后缀。不改写所属目录一个子项、所属目录一类资料使用的文件数、目录明细和数据量。
         /// </summary>
         private static List<StockOpticalDiscItemDraft> CollectExtensionDrafts(
             string root,
@@ -255,7 +263,7 @@ namespace DocMgr.Models.YearlyArchive
         }
 
         /// <summary>
-        /// 按后缀生成子项。文件来自资料所属目录及其子目录，明细名称用相对该目录的路径。
+        /// 按文件后缀生成资料子项。文件来自资料所属目录及其子目录，明细名称用相对该目录的路径。
         /// </summary>
         private static List<StockOpticalDiscItemDraft> BuildExtensionDrafts(
             string root,
@@ -423,6 +431,95 @@ namespace DocMgr.Models.YearlyArchive
                 Entries = entries
             };
         }
+
+        /// <summary>
+        /// 所属目录一个项目、一个年度的子项。不改写一级文件夹和整盘统计。
+        /// 一个项目：一级目录是资料名称，二级目录是资料子项。
+        /// 一个年度：一级目录是项目，二级目录是资料名称，三级目录是资料子项。
+        /// </summary>
+        private static HierarchyScan CollectHierarchyDrafts(
+            string root,
+            IReadOnlyList<DirectoryInfo> rootFolders,
+            int rootLooseFileCount)
+        {
+            var projectItems = new List<StockOpticalDiscItemDraft>();
+            var yearItems = new List<StockOpticalDiscItemDraft>();
+            var warnings = new List<string>();
+            int filesInsideFirstLevel = 0;
+            int filesInsideSecondLevel = 0;
+
+            foreach (var first in rootFolders)
+            {
+                var firstFiles = EnumerateFilesSafe(first.FullName);
+                var secondLevel = EnumerateBusinessDirectories(first.FullName).ToList();
+                filesInsideFirstLevel += firstFiles.Count;
+
+                foreach (var second in secondLevel)
+                {
+                    var projectSnapshot = BuildDirectorySnapshot(
+                        second.FullName,
+                        first.Name.Trim(),
+                        second.Name.Trim(),
+                        isWholeDisc: false);
+                    if (projectSnapshot.Draft.Entries.Count == 0)
+                    {
+                        warnings.Add($"文件夹 [{first.Name}\\{second.Name}] 下没有一级文件或子目录，纳入后无法立档。");
+                    }
+
+                    projectItems.Add(projectSnapshot.Draft);
+
+                    var secondFiles = EnumerateFilesSafe(second.FullName);
+                    var thirdLevel = EnumerateBusinessDirectories(second.FullName).ToList();
+                    filesInsideSecondLevel += secondFiles.Count;
+
+                    foreach (var third in thirdLevel)
+                    {
+                        var yearSnapshot = BuildDirectorySnapshot(
+                            third.FullName,
+                            second.Name.Trim(),
+                            third.Name.Trim(),
+                            isWholeDisc: false);
+                        yearSnapshot.Draft.CatalogProjectName = first.Name.Trim();
+                        if (yearSnapshot.Draft.Entries.Count == 0)
+                        {
+                            warnings.Add($"文件夹 [{first.Name}\\{second.Name}\\{third.Name}] 下没有一级文件或子目录，纳入后无法立档。");
+                        }
+
+                        yearItems.Add(yearSnapshot.Draft);
+                    }
+                }
+            }
+
+            if (filesInsideFirstLevel > 0 && projectItems.Count > 0)
+            {
+                warnings.Add($"资料目录内另有 {filesInsideFirstLevel} 个散文件。所属目录一个项目不把它们建成子项，确认前须勾选忽略。");
+            }
+
+            if (filesInsideSecondLevel > 0 && yearItems.Count > 0)
+            {
+                warnings.Add($"资料名称目录内另有 {filesInsideSecondLevel} 个散文件。所属目录一个年度不把它们建成子项，确认前须勾选忽略。");
+            }
+
+            string folderYear = new DirectoryInfo(root).Name.Trim();
+            if (yearItems.Count > 0 && (folderYear.Length != 4 || !folderYear.All(char.IsDigit)))
+            {
+                warnings.Add("所属目录名不是四位年度。选用「所属目录一个年度」时，请在年度框填写四位数字；其子目录仍作为项目。");
+            }
+
+            return new HierarchyScan(
+                projectItems,
+                yearItems,
+                rootLooseFileCount + filesInsideFirstLevel,
+                rootLooseFileCount + filesInsideFirstLevel + filesInsideSecondLevel,
+                warnings);
+        }
+
+        private readonly record struct HierarchyScan(
+            IReadOnlyList<StockOpticalDiscItemDraft> ProjectItems,
+            IReadOnlyList<StockOpticalDiscItemDraft> YearItems,
+            int ProjectLooseFileCount,
+            int YearLooseFileCount,
+            IReadOnlyList<string> Warnings);
 
         private static IEnumerable<DirectoryInfo> EnumerateBusinessDirectories(string path)
         {
@@ -593,12 +690,24 @@ namespace DocMgr.Models.YearlyArchive
 
         public int LooseFileCount { get; init; }
 
-        /// <summary>资料所属目录下没有后缀的文件数。按后缀指派时不建子项。</summary>
+        /// <summary>所属目录一个项目时，项目目录和资料目录中不建子项的散文件数。</summary>
+        public int ProjectLooseFileCount { get; init; }
+
+        /// <summary>所属目录一个年度时，年度、项目、资料目录中不建子项的散文件数。</summary>
+        public int YearLooseFileCount { get; init; }
+
+        /// <summary>资料所属目录下没有后缀的文件数。按文件后缀指派资料子项时不建子项。</summary>
         public int ExtensionlessFileCount { get; init; }
 
         public StockOpticalDiscItemDraft? WholeDisc { get; init; }
 
         public IReadOnlyList<StockOpticalDiscItemDraft> Folders { get; init; } = Array.Empty<StockOpticalDiscItemDraft>();
+
+        /// <summary>所属目录一个项目：一级目录为资料名称，二级目录为资料子项。</summary>
+        public IReadOnlyList<StockOpticalDiscItemDraft> ProjectItems { get; init; } = Array.Empty<StockOpticalDiscItemDraft>();
+
+        /// <summary>所属目录一个年度：一级目录为项目，二级目录为资料名称，三级目录为资料子项。</summary>
+        public IReadOnlyList<StockOpticalDiscItemDraft> YearItems { get; init; } = Array.Empty<StockOpticalDiscItemDraft>();
 
         /// <summary>资料所属目录下一层文件按后缀分成的子项。子项名是后缀，资料名称默认同目录名。</summary>
         public IReadOnlyList<StockOpticalDiscItemDraft> Extensions { get; init; } = Array.Empty<StockOpticalDiscItemDraft>();
@@ -616,6 +725,9 @@ namespace DocMgr.Models.YearlyArchive
     {
         public string MaterialName { get; set; } = string.Empty;
 
+        /// <summary>所属目录一个年度时，子项所属项目。空则沿用页面上的项目。</summary>
+        public string CatalogProjectName { get; set; } = string.Empty;
+
         public string ItemName { get; set; } = string.Empty;
 
         public string FullPath { get; init; } = string.Empty;
@@ -627,7 +739,7 @@ namespace DocMgr.Models.YearlyArchive
         /// <summary>是否为「所属目录一个子项」。</summary>
         public bool IsWholeDisc { get; init; }
 
-        /// <summary>按文件夹指派时是否纳入本次立档。</summary>
+        /// <summary>是否纳入本次立档。清空只取消勾选，行仍留在表中。</summary>
         public bool Include { get; set; } = true;
 
         public string DataOrganizationForm { get; init; } = string.Empty;

@@ -15,6 +15,7 @@ namespace DocMgr.Repositories.Inventory;
 public sealed class StockContainerOverviewRepository : IStockContainerOverviewRepository
 {
     private const int ContentSummaryMaxItems = 5;
+    private const string CaseSensitiveCollation = "Chinese_PRC_CS_AS";
 
     private readonly AppDbContext _dbContext;
 
@@ -49,7 +50,7 @@ public sealed class StockContainerOverviewRepository : IStockContainerOverviewRe
             .ToList();
     }
 
-    public async Task<IReadOnlyList<StockContainerOverviewRow>> SearchContainersAsync(
+    public async Task<StockContainerSearchResult> SearchContainersAsync(
         StockContainerSearchCriteria criteria)
     {
         ArgumentNullException.ThrowIfNull(criteria);
@@ -77,6 +78,27 @@ public sealed class StockContainerOverviewRepository : IStockContainerOverviewRe
                 keywordCaseSensitive,
                 criteria.IncludeElectronicEntryNames,
                 kinds,
+                criteria.HistoryMaterialKind,
+                yearlyBoxContentHits,
+                electronicBagContentHits,
+                historyBoxContentHits,
+                historyMiscContentHits);
+        }
+
+        if (criteria.PageSize > 0 && kinds.Count == 1)
+        {
+            return await SearchSingleKindPageAsync(
+                kinds.First(),
+                keyword,
+                keywordCaseSensitive,
+                locationKeyword,
+                year,
+                includeInactive,
+                lifecycleFilter,
+                archivedFrom,
+                archivedToExclusive,
+                criteria.PageNumber,
+                criteria.PageSize,
                 criteria.HistoryMaterialKind,
                 yearlyBoxContentHits,
                 electronicBagContentHits,
@@ -157,11 +179,28 @@ public sealed class StockContainerOverviewRepository : IStockContainerOverviewRe
             filtered = filtered.Where(row => !row.IsInactive);
         }
 
-        return filtered
+        var ordered = filtered
             .OrderByDescending(row => row.ArchivedDate)
             .ThenBy(row => row.ContainerKind, StringComparer.Ordinal)
             .ThenBy(row => row.ContainerCode, StringComparer.Ordinal)
             .ToList();
+        if (criteria.PageSize > 0)
+        {
+            int page = Math.Max(1, criteria.PageNumber);
+            return new StockContainerSearchResult
+            {
+                Rows = ordered.Skip((page - 1) * criteria.PageSize).Take(criteria.PageSize).ToList(),
+                TotalCount = ordered.Count,
+                BorrowedCount = ordered.Count(row => row.HasBorrowedContent)
+            };
+        }
+
+        return new StockContainerSearchResult
+        {
+            Rows = ordered,
+            TotalCount = ordered.Count,
+            BorrowedCount = ordered.Count(row => row.HasBorrowedContent)
+        };
     }
 
     public async Task<IReadOnlyList<StockContainerContentItem>> GetContentsAsync(
@@ -453,6 +492,223 @@ public sealed class StockContainerOverviewRepository : IStockContainerOverviewRe
         }
     }
 
+    private async Task<StockContainerSearchResult> SearchSingleKindPageAsync(
+        string kind,
+        string keyword,
+        bool keywordCaseSensitive,
+        string locationKeyword,
+        string? year,
+        bool includeInactive,
+        string lifecycleFilter,
+        DateTime? archivedFrom,
+        DateTime? archivedToExclusive,
+        int pageNumber,
+        int pageSize,
+        string? historyMaterialKind,
+        HashSet<int> yearlyBoxContentHits,
+        HashSet<int> electronicBagContentHits,
+        HashSet<int> historyBoxContentHits,
+        HashSet<int> historyMiscContentHits)
+    {
+        if (string.Equals(kind, StockContainerKind.YearlyBox, StringComparison.Ordinal))
+        {
+            return await SearchYearlyBoxesPageAsync(
+                keyword,
+                keywordCaseSensitive,
+                locationKeyword,
+                year,
+                includeInactive,
+                lifecycleFilter,
+                archivedFrom,
+                archivedToExclusive,
+                pageNumber,
+                pageSize,
+                yearlyBoxContentHits);
+        }
+
+        if (string.Equals(kind, StockContainerKind.ElectronicBag, StringComparison.Ordinal))
+        {
+            return await SearchElectronicBagsPageAsync(
+                keyword,
+                keywordCaseSensitive,
+                locationKeyword,
+                year,
+                includeInactive,
+                lifecycleFilter,
+                archivedFrom,
+                archivedToExclusive,
+                pageNumber,
+                pageSize,
+                electronicBagContentHits);
+        }
+
+        if (string.Equals(kind, StockContainerKind.HistoryBox, StringComparison.Ordinal))
+        {
+            return await SearchHistoryBoxesPageAsync(
+                keyword,
+                keywordCaseSensitive,
+                locationKeyword,
+                includeInactive,
+                lifecycleFilter,
+                archivedFrom,
+                archivedToExclusive,
+                pageNumber,
+                pageSize,
+                historyBoxContentHits,
+                historyMaterialKind);
+        }
+
+        if (string.Equals(kind, StockContainerKind.HistoryMisc, StringComparison.Ordinal))
+        {
+            return await SearchHistoryMiscPageAsync(
+                keyword,
+                keywordCaseSensitive,
+                locationKeyword,
+                includeInactive,
+                lifecycleFilter,
+                archivedFrom,
+                archivedToExclusive,
+                pageNumber,
+                pageSize,
+                historyMiscContentHits);
+        }
+
+        return EmptyContainerPage();
+    }
+
+    private static StockContainerSearchResult EmptyContainerPage()
+        => new()
+        {
+            Rows = Array.Empty<StockContainerOverviewRow>(),
+            TotalCount = 0,
+            BorrowedCount = 0
+        };
+
+    private async Task<StockContainerSearchResult> SearchYearlyBoxesPageAsync(
+        string keyword,
+        bool keywordCaseSensitive,
+        string locationKeyword,
+        string? year,
+        bool includeInactive,
+        string lifecycleFilter,
+        DateTime? archivedFrom,
+        DateTime? archivedToExclusive,
+        int pageNumber,
+        int pageSize,
+        HashSet<int> contentHits)
+    {
+        IQueryable<YearlyArchiveBox> query = _dbContext.YearlyArchiveBoxes.AsNoTracking();
+        if (!string.IsNullOrWhiteSpace(year))
+        {
+            query = query.Where(box => box.Year == year);
+        }
+
+        if (!string.IsNullOrWhiteSpace(locationKeyword))
+        {
+            query = query.Where(box =>
+                box.BoxLocationCode.Contains(locationKeyword)
+                || box.LastStorageLocation.Contains(locationKeyword));
+        }
+
+        if (archivedFrom.HasValue)
+        {
+            query = query.Where(box => box.ArchivedDate >= archivedFrom.Value);
+        }
+
+        if (archivedToExclusive.HasValue)
+        {
+            query = query.Where(box => box.ArchivedDate < archivedToExclusive.Value);
+        }
+
+        if (!includeInactive)
+        {
+            query = query.Where(box => box.ContainerLifecycleStatus == ArchiveContainerLifecycleStatus.InUse);
+        }
+        else if (string.Equals(lifecycleFilter, StockContainerLifecycleDisplay.FilterInactive, StringComparison.Ordinal))
+        {
+            query = query.Where(box => box.ContainerLifecycleStatus != ArchiveContainerLifecycleStatus.InUse);
+        }
+
+        query = WhereYearlyBoxKeyword(query, keyword, keywordCaseSensitive, contentHits);
+        if (string.Equals(lifecycleFilter, StockContainerLifecycleDisplay.FilterHasBorrowed, StringComparison.Ordinal))
+        {
+            query = query.Where(box => _dbContext.YearlyArchiveFilingFacts.Any(fact =>
+                fact.ContainerKind == ArchiveContainerKind.ArchiveBox
+                && fact.ContainerId == box.Id
+                && fact.LifecycleStatus == FilingFactLifecycleStatus.Borrowed));
+        }
+
+        int total = await query.CountAsync();
+        int borrowed = total == 0
+            ? 0
+            : await query.CountAsync(box => _dbContext.YearlyArchiveFilingFacts.Any(fact =>
+                fact.ContainerKind == ArchiveContainerKind.ArchiveBox
+                && fact.ContainerId == box.Id
+                && fact.LifecycleStatus == FilingFactLifecycleStatus.Borrowed));
+        if (total == 0)
+        {
+            return EmptyContainerPage();
+        }
+
+        int page = Math.Max(1, pageNumber);
+        var boxes = await query
+            .OrderByDescending(box => box.ArchivedDate)
+            .ThenBy(box => box.ArchiveSequenceNo)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+        return new StockContainerSearchResult
+        {
+            Rows = await BuildYearlyBoxRowsAsync(boxes),
+            TotalCount = total,
+            BorrowedCount = borrowed
+        };
+    }
+
+    private static IQueryable<YearlyArchiveBox> WhereYearlyBoxKeyword(
+        IQueryable<YearlyArchiveBox> query,
+        string keyword,
+        bool caseSensitive,
+        HashSet<int> contentHits)
+    {
+        if (string.IsNullOrWhiteSpace(keyword))
+        {
+            return query;
+        }
+
+        bool hasHits = contentHits.Count > 0;
+        if (caseSensitive)
+        {
+            return hasHits
+                ? query.Where(box => contentHits.Contains(box.Id)
+                    || EF.Functions.Collate(box.ArchiveSequenceNo, CaseSensitiveCollation).Contains(keyword)
+                    || EF.Functions.Collate(box.ProjectName, CaseSensitiveCollation).Contains(keyword)
+                    || EF.Functions.Collate(box.BoxLocationCode, CaseSensitiveCollation).Contains(keyword)
+                    || EF.Functions.Collate(box.LastStorageLocation, CaseSensitiveCollation).Contains(keyword)
+                    || EF.Functions.Collate(box.Remarks, CaseSensitiveCollation).Contains(keyword))
+                : query.Where(box =>
+                    EF.Functions.Collate(box.ArchiveSequenceNo, CaseSensitiveCollation).Contains(keyword)
+                    || EF.Functions.Collate(box.ProjectName, CaseSensitiveCollation).Contains(keyword)
+                    || EF.Functions.Collate(box.BoxLocationCode, CaseSensitiveCollation).Contains(keyword)
+                    || EF.Functions.Collate(box.LastStorageLocation, CaseSensitiveCollation).Contains(keyword)
+                    || EF.Functions.Collate(box.Remarks, CaseSensitiveCollation).Contains(keyword));
+        }
+
+        return hasHits
+            ? query.Where(box => contentHits.Contains(box.Id)
+                || box.ArchiveSequenceNo.Contains(keyword)
+                || box.ProjectName.Contains(keyword)
+                || box.BoxLocationCode.Contains(keyword)
+                || box.LastStorageLocation.Contains(keyword)
+                || box.Remarks.Contains(keyword))
+            : query.Where(box =>
+                box.ArchiveSequenceNo.Contains(keyword)
+                || box.ProjectName.Contains(keyword)
+                || box.BoxLocationCode.Contains(keyword)
+                || box.LastStorageLocation.Contains(keyword)
+                || box.Remarks.Contains(keyword));
+    }
+
     private async Task<List<StockContainerOverviewRow>> SearchYearlyBoxesAsync(
         string keyword,
         bool keywordCaseSensitive,
@@ -511,6 +767,11 @@ public sealed class StockContainerOverviewRepository : IStockContainerOverviewRe
             return new List<StockContainerOverviewRow>();
         }
 
+        return await BuildYearlyBoxRowsAsync(boxes);
+    }
+
+    private async Task<List<StockContainerOverviewRow>> BuildYearlyBoxRowsAsync(List<YearlyArchiveBox> boxes)
+    {
         var boxIds = boxes.Select(box => box.Id).ToList();
         var factStats = await _dbContext.YearlyArchiveFilingFacts
             .AsNoTracking()
@@ -631,6 +892,13 @@ public sealed class StockContainerOverviewRepository : IStockContainerOverviewRe
             return new List<StockContainerOverviewRow>();
         }
 
+        return await BuildElectronicBagRowsAsync(units, projectSummaries);
+    }
+
+    private async Task<List<StockContainerOverviewRow>> BuildElectronicBagRowsAsync(
+        List<YearlyElectronicArchiveUnit> units,
+        Dictionary<int, ElectronicArchiveProjectSummary> projectSummaries)
+    {
         var unitIds = units.Select(unit => unit.Id).ToList();
         var factStats = await _dbContext.YearlyArchiveFilingFacts
             .AsNoTracking()
@@ -696,6 +964,481 @@ public sealed class StockContainerOverviewRepository : IStockContainerOverviewRe
         return rows;
     }
 
+    private async Task<StockContainerSearchResult> SearchElectronicBagsPageAsync(
+        string keyword,
+        bool keywordCaseSensitive,
+        string locationKeyword,
+        string? year,
+        bool includeInactive,
+        string lifecycleFilter,
+        DateTime? archivedFrom,
+        DateTime? archivedToExclusive,
+        int pageNumber,
+        int pageSize,
+        HashSet<int> contentHits)
+    {
+        IQueryable<YearlyElectronicArchiveUnit> query = _dbContext.YearlyElectronicArchiveUnits.AsNoTracking();
+        if (!string.IsNullOrWhiteSpace(year))
+        {
+            query = query.Where(unit => _dbContext.YearlyArchiveFilingFacts.Any(fact =>
+                fact.ContainerKind == ArchiveContainerKind.ElectronicBag
+                && fact.ContainerId == unit.Id
+                && fact.ProjectId != null
+                && _dbContext.ProjectInfos.Any(project => project.Id == fact.ProjectId && project.ImplementYear == year)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(locationKeyword))
+        {
+            query = query.Where(unit => unit.StorageLocation.Contains(locationKeyword));
+        }
+
+        if (archivedFrom.HasValue)
+        {
+            query = query.Where(unit => unit.ArchivedDate >= archivedFrom.Value);
+        }
+
+        if (archivedToExclusive.HasValue)
+        {
+            query = query.Where(unit => unit.ArchivedDate < archivedToExclusive.Value);
+        }
+
+        if (!includeInactive)
+        {
+            query = query.Where(unit => unit.UnitLifecycleStatus == ArchiveContainerLifecycleStatus.InUse);
+        }
+        else if (string.Equals(lifecycleFilter, StockContainerLifecycleDisplay.FilterInactive, StringComparison.Ordinal))
+        {
+            query = query.Where(unit => unit.UnitLifecycleStatus != ArchiveContainerLifecycleStatus.InUse);
+        }
+
+        query = WhereElectronicBagKeyword(query, keyword, keywordCaseSensitive, contentHits);
+        if (string.Equals(lifecycleFilter, StockContainerLifecycleDisplay.FilterHasBorrowed, StringComparison.Ordinal))
+        {
+            query = query.Where(unit => _dbContext.YearlyArchiveFilingFacts.Any(fact =>
+                fact.ContainerKind == ArchiveContainerKind.ElectronicBag
+                && fact.ContainerId == unit.Id
+                && fact.LifecycleStatus == FilingFactLifecycleStatus.Borrowed));
+        }
+
+        int total = await query.CountAsync();
+        int borrowed = total == 0
+            ? 0
+            : await query.CountAsync(unit => _dbContext.YearlyArchiveFilingFacts.Any(fact =>
+                fact.ContainerKind == ArchiveContainerKind.ElectronicBag
+                && fact.ContainerId == unit.Id
+                && fact.LifecycleStatus == FilingFactLifecycleStatus.Borrowed));
+        if (total == 0)
+        {
+            return EmptyContainerPage();
+        }
+
+        int page = Math.Max(1, pageNumber);
+        var units = await query
+            .OrderByDescending(unit => unit.ArchivedDate)
+            .ThenBy(unit => unit.ElectronicArchiveNo)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+        var projectSummaries = ElectronicArchiveProjectLookup.LoadByContainerIds(
+            _dbContext,
+            units.Select(unit => unit.Id).ToList());
+        return new StockContainerSearchResult
+        {
+            Rows = await BuildElectronicBagRowsAsync(units, projectSummaries),
+            TotalCount = total,
+            BorrowedCount = borrowed
+        };
+    }
+
+    private IQueryable<YearlyElectronicArchiveUnit> WhereElectronicBagKeyword(
+        IQueryable<YearlyElectronicArchiveUnit> query,
+        string keyword,
+        bool caseSensitive,
+        HashSet<int> contentHits)
+    {
+        if (string.IsNullOrWhiteSpace(keyword))
+        {
+            return query;
+        }
+
+        bool hasHits = contentHits.Count > 0;
+        if (caseSensitive)
+        {
+            return hasHits
+                ? query.Where(unit => contentHits.Contains(unit.Id)
+                    || EF.Functions.Collate(unit.ElectronicArchiveNo, CaseSensitiveCollation).Contains(keyword)
+                    || EF.Functions.Collate(unit.StorageLocation, CaseSensitiveCollation).Contains(keyword)
+                    || EF.Functions.Collate(unit.ContentSummary, CaseSensitiveCollation).Contains(keyword)
+                    || EF.Functions.Collate(unit.LinkedMediumCodes, CaseSensitiveCollation).Contains(keyword)
+                    || EF.Functions.Collate(unit.Remarks, CaseSensitiveCollation).Contains(keyword)
+                    || EF.Functions.Collate(unit.Year, CaseSensitiveCollation).Contains(keyword)
+                    || _dbContext.YearlyArchiveFilingFacts.Any(fact =>
+                        fact.ContainerKind == ArchiveContainerKind.ElectronicBag
+                        && fact.ContainerId == unit.Id
+                        && (EF.Functions.Collate(fact.ProjectName, CaseSensitiveCollation).Contains(keyword)
+                            || (fact.ProjectId != null && _dbContext.ProjectInfos.Any(project =>
+                                project.Id == fact.ProjectId
+                                && EF.Functions.Collate(project.ImplementYear, CaseSensitiveCollation).Contains(keyword))))))
+                : query.Where(unit =>
+                    EF.Functions.Collate(unit.ElectronicArchiveNo, CaseSensitiveCollation).Contains(keyword)
+                    || EF.Functions.Collate(unit.StorageLocation, CaseSensitiveCollation).Contains(keyword)
+                    || EF.Functions.Collate(unit.ContentSummary, CaseSensitiveCollation).Contains(keyword)
+                    || EF.Functions.Collate(unit.LinkedMediumCodes, CaseSensitiveCollation).Contains(keyword)
+                    || EF.Functions.Collate(unit.Remarks, CaseSensitiveCollation).Contains(keyword)
+                    || EF.Functions.Collate(unit.Year, CaseSensitiveCollation).Contains(keyword)
+                    || _dbContext.YearlyArchiveFilingFacts.Any(fact =>
+                        fact.ContainerKind == ArchiveContainerKind.ElectronicBag
+                        && fact.ContainerId == unit.Id
+                        && (EF.Functions.Collate(fact.ProjectName, CaseSensitiveCollation).Contains(keyword)
+                            || (fact.ProjectId != null && _dbContext.ProjectInfos.Any(project =>
+                                project.Id == fact.ProjectId
+                                && EF.Functions.Collate(project.ImplementYear, CaseSensitiveCollation).Contains(keyword))))));
+        }
+
+        return hasHits
+            ? query.Where(unit => contentHits.Contains(unit.Id)
+                || unit.ElectronicArchiveNo.Contains(keyword)
+                || unit.StorageLocation.Contains(keyword)
+                || unit.ContentSummary.Contains(keyword)
+                || unit.LinkedMediumCodes.Contains(keyword)
+                || unit.Remarks.Contains(keyword)
+                || unit.Year.Contains(keyword)
+                || _dbContext.YearlyArchiveFilingFacts.Any(fact =>
+                    fact.ContainerKind == ArchiveContainerKind.ElectronicBag
+                    && fact.ContainerId == unit.Id
+                    && (fact.ProjectName.Contains(keyword)
+                        || (fact.ProjectId != null && _dbContext.ProjectInfos.Any(project =>
+                            project.Id == fact.ProjectId && project.ImplementYear.Contains(keyword))))))
+            : query.Where(unit =>
+                unit.ElectronicArchiveNo.Contains(keyword)
+                || unit.StorageLocation.Contains(keyword)
+                || unit.ContentSummary.Contains(keyword)
+                || unit.LinkedMediumCodes.Contains(keyword)
+                || unit.Remarks.Contains(keyword)
+                || unit.Year.Contains(keyword)
+                || _dbContext.YearlyArchiveFilingFacts.Any(fact =>
+                    fact.ContainerKind == ArchiveContainerKind.ElectronicBag
+                    && fact.ContainerId == unit.Id
+                    && (fact.ProjectName.Contains(keyword)
+                        || (fact.ProjectId != null && _dbContext.ProjectInfos.Any(project =>
+                            project.Id == fact.ProjectId && project.ImplementYear.Contains(keyword))))));
+    }
+
+    private async Task<StockContainerSearchResult> SearchHistoryBoxesPageAsync(
+        string keyword,
+        bool keywordCaseSensitive,
+        string locationKeyword,
+        bool includeInactive,
+        string lifecycleFilter,
+        DateTime? archivedFrom,
+        DateTime? archivedToExclusive,
+        int pageNumber,
+        int pageSize,
+        HashSet<int> contentHits,
+        string? historyMaterialKind)
+    {
+        if (string.Equals(lifecycleFilter, StockContainerLifecycleDisplay.FilterHasBorrowed, StringComparison.Ordinal))
+        {
+            return EmptyContainerPage();
+        }
+
+        IQueryable<HistoryArchiveBox> query = BuildHistoryBoxPageQuery(
+            keyword,
+            keywordCaseSensitive,
+            locationKeyword,
+            includeInactive,
+            lifecycleFilter,
+            archivedFrom,
+            archivedToExclusive,
+            contentHits,
+            historyMaterialKind);
+        return await PageHistoryBoxesAsync(
+            query,
+            keywordCaseSensitive,
+            locationKeyword,
+            includeInactive,
+            archivedFrom,
+            archivedToExclusive,
+            pageNumber,
+            pageSize,
+            historyMaterialKind);
+    }
+
+    private IQueryable<HistoryArchiveBox> BuildHistoryBoxPageQuery(
+        string keyword,
+        bool keywordCaseSensitive,
+        string locationKeyword,
+        bool includeInactive,
+        string lifecycleFilter,
+        DateTime? archivedFrom,
+        DateTime? archivedToExclusive,
+        HashSet<int> contentHits,
+        string? historyMaterialKind)
+    {
+        IQueryable<HistoryArchiveBox> query = _dbContext.HistoryArchiveBoxes.AsNoTracking();
+        if (!string.IsNullOrWhiteSpace(locationKeyword))
+        {
+            query = query.Where(box =>
+                box.BoxCode.Contains(locationKeyword)
+                || box.LastStorageLocation.Contains(locationKeyword));
+        }
+
+        if (archivedFrom.HasValue)
+        {
+            query = query.Where(box => box.ArchivedDate >= archivedFrom.Value);
+        }
+
+        if (archivedToExclusive.HasValue)
+        {
+            query = query.Where(box => box.ArchivedDate < archivedToExclusive.Value);
+        }
+
+        if (!includeInactive)
+        {
+            query = query.Where(box => box.LifecycleStatus != HistoryArchiveDisposalDomainValues.LifecycleDisposed);
+        }
+        else if (string.Equals(lifecycleFilter, StockContainerLifecycleDisplay.FilterInactive, StringComparison.Ordinal))
+        {
+            query = query.Where(box => box.LifecycleStatus == HistoryArchiveDisposalDomainValues.LifecycleDisposed);
+        }
+
+        if (!string.IsNullOrWhiteSpace(historyMaterialKind))
+        {
+            string materialKind = historyMaterialKind.Trim();
+            query = query.Where(box =>
+                _dbContext.HistoryArchiveBoxLedgerLinks.Any(link =>
+                    link.HistoryArchiveBoxId == box.Id && link.MaterialKind == materialKind)
+                || (includeInactive
+                    && box.LifecycleStatus == HistoryArchiveDisposalDomainValues.LifecycleDisposed
+                    && box.LastStorageLocation != string.Empty));
+        }
+
+        return WhereHistoryBoxKeyword(query, keyword, keywordCaseSensitive, contentHits);
+    }
+
+    private static IQueryable<HistoryArchiveBox> WhereHistoryBoxKeyword(
+        IQueryable<HistoryArchiveBox> query,
+        string keyword,
+        bool caseSensitive,
+        HashSet<int> contentHits)
+    {
+        if (string.IsNullOrWhiteSpace(keyword))
+        {
+            return query;
+        }
+
+        bool hasHits = contentHits.Count > 0;
+        if (caseSensitive)
+        {
+            return hasHits
+                ? query.Where(box => contentHits.Contains(box.Id)
+                    || EF.Functions.Collate(box.BoxCode, CaseSensitiveCollation).Contains(keyword)
+                    || EF.Functions.Collate(box.LastStorageLocation, CaseSensitiveCollation).Contains(keyword)
+                    || EF.Functions.Collate(box.BoxSpecification, CaseSensitiveCollation).Contains(keyword)
+                    || EF.Functions.Collate(box.Remarks, CaseSensitiveCollation).Contains(keyword))
+                : query.Where(box =>
+                    EF.Functions.Collate(box.BoxCode, CaseSensitiveCollation).Contains(keyword)
+                    || EF.Functions.Collate(box.LastStorageLocation, CaseSensitiveCollation).Contains(keyword)
+                    || EF.Functions.Collate(box.BoxSpecification, CaseSensitiveCollation).Contains(keyword)
+                    || EF.Functions.Collate(box.Remarks, CaseSensitiveCollation).Contains(keyword));
+        }
+
+        return hasHits
+            ? query.Where(box => contentHits.Contains(box.Id)
+                || box.BoxCode.Contains(keyword)
+                || box.LastStorageLocation.Contains(keyword)
+                || box.BoxSpecification.Contains(keyword)
+                || box.Remarks.Contains(keyword))
+            : query.Where(box =>
+                box.BoxCode.Contains(keyword)
+                || box.LastStorageLocation.Contains(keyword)
+                || box.BoxSpecification.Contains(keyword)
+                || box.Remarks.Contains(keyword));
+    }
+
+    private async Task<StockContainerSearchResult> PageHistoryBoxesAsync(
+        IQueryable<HistoryArchiveBox> query,
+        bool keywordCaseSensitive,
+        string locationKeyword,
+        bool includeInactive,
+        DateTime? archivedFrom,
+        DateTime? archivedToExclusive,
+        int pageNumber,
+        int pageSize,
+        string? historyMaterialKind)
+    {
+        int total = await query.CountAsync();
+        if (total == 0)
+        {
+            return EmptyContainerPage();
+        }
+
+        int page = Math.Max(1, pageNumber);
+        var ids = await query
+            .OrderByDescending(box => box.ArchivedDate)
+            .ThenBy(box => box.BoxCode)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(box => box.Id)
+            .ToListAsync();
+        var rows = await SearchHistoryBoxesAsync(
+            string.Empty,
+            keywordCaseSensitive,
+            locationKeyword,
+            includeInactive,
+            archivedFrom,
+            archivedToExclusive,
+            new HashSet<int>(),
+            historyMaterialKind,
+            ids);
+        return new StockContainerSearchResult
+        {
+            Rows = rows
+                .OrderByDescending(row => row.ArchivedDate)
+                .ThenBy(row => row.ContainerId)
+                .ToList(),
+            TotalCount = total,
+            BorrowedCount = 0
+        };
+    }
+
+    private async Task<StockContainerSearchResult> SearchHistoryMiscPageAsync(
+        string keyword,
+        bool keywordCaseSensitive,
+        string locationKeyword,
+        bool includeInactive,
+        string lifecycleFilter,
+        DateTime? archivedFrom,
+        DateTime? archivedToExclusive,
+        int pageNumber,
+        int pageSize,
+        HashSet<int> contentHits)
+    {
+        if (string.Equals(lifecycleFilter, StockContainerLifecycleDisplay.FilterHasBorrowed, StringComparison.Ordinal))
+        {
+            return EmptyContainerPage();
+        }
+
+        IQueryable<HistoryMiscMaterial> query = _dbContext.HistoryMiscMaterials.AsNoTracking();
+        if (!string.IsNullOrWhiteSpace(locationKeyword))
+        {
+            query = query.Where(material =>
+                material.StorageLocation.Contains(locationKeyword)
+                || material.LastStorageLocation.Contains(locationKeyword));
+        }
+
+        if (archivedFrom.HasValue)
+        {
+            query = query.Where(material => material.RegisteredAt >= archivedFrom.Value);
+        }
+
+        if (archivedToExclusive.HasValue)
+        {
+            query = query.Where(material => material.RegisteredAt < archivedToExclusive.Value);
+        }
+
+        if (!includeInactive)
+        {
+            query = query.Where(material =>
+                material.LifecycleStatus != HistoryArchiveDisposalDomainValues.LifecycleDisposed);
+        }
+        else if (string.Equals(lifecycleFilter, StockContainerLifecycleDisplay.FilterInactive, StringComparison.Ordinal))
+        {
+            query = query.Where(material =>
+                material.LifecycleStatus == HistoryArchiveDisposalDomainValues.LifecycleDisposed);
+        }
+
+        query = WhereHistoryMiscKeyword(query, keyword, keywordCaseSensitive, contentHits);
+        int total = await query.CountAsync();
+        if (total == 0)
+        {
+            return EmptyContainerPage();
+        }
+
+        int page = Math.Max(1, pageNumber);
+        var ids = await query
+            .OrderByDescending(material => material.RegisteredAt)
+            .ThenBy(material => material.ContainerCode)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(material => material.Id)
+            .ToListAsync();
+        var rows = await SearchHistoryMiscAsync(
+            string.Empty,
+            keywordCaseSensitive,
+            locationKeyword,
+            includeInactive,
+            archivedFrom,
+            archivedToExclusive,
+            new HashSet<int>(),
+            ids);
+        return new StockContainerSearchResult
+        {
+            Rows = rows
+                .OrderByDescending(row => row.ArchivedDate)
+                .ThenBy(row => row.ContainerCode, StringComparer.Ordinal)
+                .ToList(),
+            TotalCount = total,
+            BorrowedCount = 0
+        };
+    }
+
+    private static IQueryable<HistoryMiscMaterial> WhereHistoryMiscKeyword(
+        IQueryable<HistoryMiscMaterial> query,
+        string keyword,
+        bool caseSensitive,
+        HashSet<int> contentHits)
+    {
+        if (string.IsNullOrWhiteSpace(keyword))
+        {
+            return query;
+        }
+
+        bool hasHits = contentHits.Count > 0;
+        if (caseSensitive)
+        {
+            return hasHits
+                ? query.Where(material => contentHits.Contains(material.Id)
+                    || EF.Functions.Collate(material.ContainerCode, CaseSensitiveCollation).Contains(keyword)
+                    || EF.Functions.Collate(material.ContainerKind, CaseSensitiveCollation).Contains(keyword)
+                    || EF.Functions.Collate(material.MajorCategory, CaseSensitiveCollation).Contains(keyword)
+                    || EF.Functions.Collate(material.SubCategory, CaseSensitiveCollation).Contains(keyword)
+                    || EF.Functions.Collate(material.StorageLocation, CaseSensitiveCollation).Contains(keyword)
+                    || EF.Functions.Collate(material.LastStorageLocation, CaseSensitiveCollation).Contains(keyword)
+                    || EF.Functions.Collate(material.Remark, CaseSensitiveCollation).Contains(keyword)
+                    || EF.Functions.Collate(material.Registrant, CaseSensitiveCollation).Contains(keyword))
+                : query.Where(material =>
+                    EF.Functions.Collate(material.ContainerCode, CaseSensitiveCollation).Contains(keyword)
+                    || EF.Functions.Collate(material.ContainerKind, CaseSensitiveCollation).Contains(keyword)
+                    || EF.Functions.Collate(material.MajorCategory, CaseSensitiveCollation).Contains(keyword)
+                    || EF.Functions.Collate(material.SubCategory, CaseSensitiveCollation).Contains(keyword)
+                    || EF.Functions.Collate(material.StorageLocation, CaseSensitiveCollation).Contains(keyword)
+                    || EF.Functions.Collate(material.LastStorageLocation, CaseSensitiveCollation).Contains(keyword)
+                    || EF.Functions.Collate(material.Remark, CaseSensitiveCollation).Contains(keyword)
+                    || EF.Functions.Collate(material.Registrant, CaseSensitiveCollation).Contains(keyword));
+        }
+
+        return hasHits
+            ? query.Where(material => contentHits.Contains(material.Id)
+                || material.ContainerCode.Contains(keyword)
+                || material.ContainerKind.Contains(keyword)
+                || material.MajorCategory.Contains(keyword)
+                || material.SubCategory.Contains(keyword)
+                || material.StorageLocation.Contains(keyword)
+                || material.LastStorageLocation.Contains(keyword)
+                || material.Remark.Contains(keyword)
+                || material.Registrant.Contains(keyword))
+            : query.Where(material =>
+                material.ContainerCode.Contains(keyword)
+                || material.ContainerKind.Contains(keyword)
+                || material.MajorCategory.Contains(keyword)
+                || material.SubCategory.Contains(keyword)
+                || material.StorageLocation.Contains(keyword)
+                || material.LastStorageLocation.Contains(keyword)
+                || material.Remark.Contains(keyword)
+                || material.Registrant.Contains(keyword));
+    }
+
     private async Task<List<StockContainerOverviewRow>> SearchHistoryBoxesAsync(
         string keyword,
         bool keywordCaseSensitive,
@@ -704,9 +1447,14 @@ public sealed class StockContainerOverviewRepository : IStockContainerOverviewRe
         DateTime? archivedFrom,
         DateTime? archivedToExclusive,
         HashSet<int> contentHits,
-        string? historyMaterialKind)
+        string? historyMaterialKind,
+        IReadOnlyCollection<int>? onlyIds = null)
     {
         IQueryable<HistoryArchiveBox> query = _dbContext.HistoryArchiveBoxes.AsNoTracking();
+        if (onlyIds != null)
+        {
+            query = query.Where(box => onlyIds.Contains(box.Id));
+        }
 
         if (!string.IsNullOrWhiteSpace(locationKeyword))
         {
@@ -833,11 +1581,16 @@ public sealed class StockContainerOverviewRepository : IStockContainerOverviewRe
         bool includeInactive,
         DateTime? archivedFrom,
         DateTime? archivedToExclusive,
-        HashSet<int> contentHits)
+        HashSet<int> contentHits,
+        IReadOnlyCollection<int>? onlyIds = null)
     {
         IQueryable<HistoryMiscMaterial> query = _dbContext.HistoryMiscMaterials
             .AsNoTracking()
             .Include(material => material.Lines);
+        if (onlyIds != null)
+        {
+            query = query.Where(material => onlyIds.Contains(material.Id));
+        }
 
         if (!string.IsNullOrWhiteSpace(locationKeyword))
         {

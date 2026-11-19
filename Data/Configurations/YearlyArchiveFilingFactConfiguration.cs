@@ -12,6 +12,7 @@ namespace DocMgr.Data.Configurations
             builder.HasKey(fact => fact.Id);
 
             builder.Property(fact => fact.FilingFactNo).HasMaxLength(32).IsRequired();
+            builder.HasIndex(fact => fact.FilingFactNo).IsUnique();
             builder.Property(fact => fact.MediaKind).HasMaxLength(8).IsRequired();
             builder.Property(fact => fact.FormNo).HasMaxLength(64);
             builder.Property(fact => fact.MaterialName).HasMaxLength(256);

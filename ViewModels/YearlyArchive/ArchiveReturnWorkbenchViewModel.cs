@@ -451,9 +451,12 @@ namespace DocMgr.ViewModels.YearlyArchive
             {
                 if (CanApprove)
                 {
-                    return HasAbnormalReturnItems
-                        ? "本单存在灭失：签批交接单需借出时全部审核审批人（部门审核、资料室负责人、生产科负责人、分管生产院长签字）签字；请核对后点击“审批通过”。"
-                        : "本单资料完好归还：签批交接单仅需部门审核签字，无需资料室负责人及其他审批人；请核对后点击“审批通过”。";
+                    string names = _approvalChain == null
+                        ? string.Empty
+                        : string.Join("、", _approvalChain.EnabledSigners().Select(signer => signer.DisplayName));
+                    return string.IsNullOrWhiteSpace(names)
+                        ? "请核对后点击“审批通过”。"
+                        : $"请核对启用的签字人（{names}）后点击“审批通过”。";
                 }
 
                 return EditingRecord?.Status == YearlyArchiveReturnRecord.Approved
@@ -461,30 +464,6 @@ namespace DocMgr.ViewModels.YearlyArchive
                     : string.Empty;
             }
         }
-
-        /// <summary>仅部门审核节点启用时展示紧凑栏。</summary>
-        public bool ShowIntactApprovalSigner =>
-            IsEditing
-            && (_approvalChain == null
-                ? !HasAbnormalReturnItems
-                : _approvalChain.DeptHead.IsEnabled
-                  && !_approvalChain.HasFunctionalLevel
-                  && !_approvalChain.HasInstituteLevel);
-
-        /// <summary>职能部门或院级节点启用时展示完整签批栏。</summary>
-        public bool ShowLossApprovalSigners =>
-            IsEditing
-            && (_approvalChain == null
-                ? HasAbnormalReturnItems
-                : _approvalChain.HasFunctionalLevel || _approvalChain.HasInstituteLevel);
-
-        /// <summary>审核人字段标签。</summary>
-        public string ReviewerFieldLabel => ShowLossApprovalSigners
-            ? "部门审核（借出时） *："
-            : "部门审核 *：";
-
-        /// <summary>资料室签字字段标签（多节点签批时展示）。</summary>
-        public string ApproverFieldLabel => "资料室负责人（借出时） *：";
 
         public string ConfirmHandoverHintText
         {
@@ -1294,13 +1273,9 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             OnPropertyChanged(nameof(HasAbnormalReturnItems));
             OnPropertyChanged(nameof(ShowAbnormalReturnPanel));
-            OnPropertyChanged(nameof(ShowIntactApprovalSigner));
-            OnPropertyChanged(nameof(ShowLossApprovalSigners));
             OnPropertyChanged(nameof(CanComplete));
             OnPropertyChanged(nameof(CanPrintHandoverSheet));
             OnPropertyChanged(nameof(ApproveHintText));
-            OnPropertyChanged(nameof(ReviewerFieldLabel));
-            OnPropertyChanged(nameof(ApproverFieldLabel));
             RefreshAbnormalFlowHint();
             RefreshWorkflowHint();
             NotifyShellAliasPropertiesChanged();
@@ -1361,7 +1336,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 ? (IsEditable
                     ? "本单存在灭失份数：请填写灭失具体情况（将写入签批交接单），打印并完成线下签字后提交；签批交接单扫描件由资料管理员上传。"
                     : "本单存在灭失份数：请打印签批交接单完成线下签字；签批交接单扫描件由资料管理员上传。")
-                : "本单存在灭失份数：灭失说明已体现在签批交接单中，请核对明细与四级签字人后办理审批与交接。";
+                : "本单存在灭失份数：灭失说明已体现在签批交接单中，请核对明细与本单启用的审核审批人后办理审批与交接。";
         }
 
         private void NotifyEditCommandStates()
@@ -1380,8 +1355,6 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(CanPrintHandoverSheet));
             OnPropertyChanged(nameof(ShowAbnormalReturnPanel));
             OnPropertyChanged(nameof(HasAbnormalReturnItems));
-            OnPropertyChanged(nameof(ShowIntactApprovalSigner));
-            OnPropertyChanged(nameof(ShowLossApprovalSigners));
             OnPropertyChanged(nameof(ShowApplicationActions));
             OnPropertyChanged(nameof(ShowApprovalActions));
             OnPropertyChanged(nameof(ShowApprovalEditorPanel));
@@ -1389,8 +1362,6 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(ShowStartReturnButton));
             OnPropertyChanged(nameof(CanStartReturn));
             OnPropertyChanged(nameof(ApproveHintText));
-            OnPropertyChanged(nameof(ReviewerFieldLabel));
-            OnPropertyChanged(nameof(ApproverFieldLabel));
             OnPropertyChanged(nameof(ConfirmHandoverHintText));
             NotifyShellAliasPropertiesChanged();
             OnPropertyChanged(nameof(UploadHintText));

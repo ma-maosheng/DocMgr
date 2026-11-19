@@ -24,7 +24,7 @@ namespace DocMgr.Services.Inventory
             return _repository.GetDistinctYearsAsync();
         }
 
-        public Task<IReadOnlyList<StockContainerOverviewRow>> SearchContainersAsync(
+        public Task<StockContainerSearchResult> SearchContainersAsync(
             StockContainerSearchCriteria criteria)
         {
             ArgumentNullException.ThrowIfNull(criteria);

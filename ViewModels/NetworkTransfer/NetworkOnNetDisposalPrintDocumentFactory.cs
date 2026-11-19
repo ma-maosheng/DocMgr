@@ -22,8 +22,6 @@ namespace DocMgr.ViewModels.NetworkTransfer
         private const double HeaderHeight = 28;
         /// <summary>单行内容统一行高（原因/方式、说明、申请人、审核、审批、备注等）。</summary>
         private const double StandardRowHeight = PrintPageLayoutSupport.TableRowContentHeightOneLineDip;
-        /// <summary>审核/审批（仅签字+日期，单行）。</summary>
-        private const double ReviewRowHeight = PrintPageLayoutSupport.TableRowContentHeightOneLineDip;
         private const double RowChromeDip = PrintPageLayoutSupport.TableCellPaddingDip;
         private const string BlankDateSuffix = "日期:______年___月___日";
 
@@ -43,9 +41,25 @@ namespace DocMgr.ViewModels.NetworkTransfer
             string reasonText = EmptyAsPlaceholder(data.Reason);
             string remarkText = EmptyAsPlaceholder(data.Remark);
             string itemListText = BuildItemList(data);
+            string reviewSection = BuildReviewSection(data);
+            string approveSection = BuildApproveSection(data);
+            bool hasReview = !string.IsNullOrWhiteSpace(reviewSection);
+            bool hasApprove = !string.IsNullOrWhiteSpace(approveSection);
             double reasonRowHeight = PrintPageLayoutSupport.ResolveSpannedContentRowHeightDip(reasonText, ReasonMaxLines);
             double remarkRowHeight = PrintPageLayoutSupport.ResolveSpannedContentRowHeightDip(remarkText, RemarkMaxLines);
-            double itemRowHeight = CalculateItemRowHeight(data, reasonRowHeight, remarkRowHeight, itemListText);
+            double reviewRowHeight = hasReview
+                ? PrintPageLayoutSupport.GetTableRowContentHeightDip(CountEnabledReviewLines(data))
+                : 0;
+            double approveRowHeight = hasApprove
+                ? PrintPageLayoutSupport.GetTableRowContentHeightDip(CountEnabledApproveLines(data))
+                : 0;
+            double itemRowHeight = CalculateItemRowHeight(
+                data,
+                reasonRowHeight,
+                remarkRowHeight,
+                reviewRowHeight,
+                approveRowHeight,
+                itemListText);
 
             var document = CreateDocumentSkeleton();
 
@@ -81,8 +95,15 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 "申请人", EmptyAsPlaceholder(data.ApplicantName),
                 "申请部门", EmptyAsPlaceholder(data.ApplicantDept),
                 StandardRowHeight));
-            rowGroup.Rows.Add(CreateSingleRow("审核", BuildReviewSection(data), ReviewRowHeight, verticalAlignTop: true));
-            rowGroup.Rows.Add(CreateSingleRow("审批", BuildApproveSection(data), ReviewRowHeight, verticalAlignTop: true));
+            if (hasReview)
+            {
+                rowGroup.Rows.Add(CreateSingleRow("审核", reviewSection, reviewRowHeight, verticalAlignTop: true));
+            }
+
+            if (hasApprove)
+            {
+                rowGroup.Rows.Add(CreateSingleRow("审批", approveSection, approveRowHeight, verticalAlignTop: true));
+            }
             rowGroup.Rows.Add(CreateSingleRow("备注", remarkText, remarkRowHeight));
 
             document.Blocks.Add(CreateMainTable(rowGroup));
@@ -91,19 +112,61 @@ namespace DocMgr.ViewModels.NetworkTransfer
             return document;
         }
 
+        private static int CountEnabledReviewLines(NetworkOnNetDisposalPrintData data)
+        {
+            int count = 0;
+            if (data.EnableDeptHead)
+            {
+                count++;
+            }
+
+            if (data.EnableArchiveRoomHead)
+            {
+                count++;
+            }
+
+            if (data.EnableProductionHead)
+            {
+                count++;
+            }
+
+            return Math.Max(count, 1);
+        }
+
+        private static int CountEnabledApproveLines(NetworkOnNetDisposalPrintData data)
+        {
+            int count = 0;
+            if (data.EnableArchiveDeputyPresident)
+            {
+                count++;
+            }
+
+            if (data.EnableProductionVicePresident)
+            {
+                count++;
+            }
+
+            return Math.Max(count, 1);
+        }
+
         private static double CalculateItemRowHeight(
             NetworkOnNetDisposalPrintData data,
             double reasonRowHeight,
             double remarkRowHeight,
+            double reviewRowHeight,
+            double approveRowHeight,
             string itemListText)
         {
-            // 固定行：原因方式、申请人、审核、审批(4 单行结构) + 申请说明 + 备注。
+            // 固定行：原因方式、申请人 + 申请说明 + 备注 + 已启用的审核/审批。
+            bool hasReview = reviewRowHeight > 0;
+            bool hasApprove = approveRowHeight > 0;
             double fixedContentHeight =
                 StandardRowHeight * 2
-                + ReviewRowHeight * 2
+                + reviewRowHeight
+                + approveRowHeight
                 + reasonRowHeight
                 + remarkRowHeight;
-            const int fixedRowCount = 6;
+            int fixedRowCount = 4 + (hasReview ? 1 : 0) + (hasApprove ? 1 : 0);
             double fixedTableHeight = fixedContentHeight
                 + PrintPageLayoutSupport.GetTableRowOuterHeightDip(0, RowChromeDip) * fixedRowCount
                 + PrintPageLayoutSupport.EstimateTableBottomBorderHeightDip(fixedRowCount);
@@ -228,7 +291,7 @@ namespace DocMgr.ViewModels.NetworkTransfer
         private static IReadOnlyList<string> BuildFooterLines(NetworkOnNetDisposalPrintData data) =>
         [
             "1、本单由资料管理员发起，按“保存草稿、提交、打印签批单、线下签字、审批通过、上传签批单、办结”流程办理。",
-            "2、审核为资料室负责人、审批为分管资料院长签字，仅需签字与日期；请线下完成后回传签批单。",
+            "2、请按本单列出的审核审批节点签字，仅需签字与日期；请线下完成后回传签批单。",
             $"3、本签批单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。"
         ];
 

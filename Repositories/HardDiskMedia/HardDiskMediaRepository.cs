@@ -21,43 +21,173 @@ public partial class HardDiskMediaRepository : IHardDiskMediaRepository
         _dbContext = dbContext;
     }
 
-    public Task<List<HardDiskMedium>> GetOverviewMediaAsync()
+    public async Task<HardDiskOverviewAggregate> GetOverviewAggregateAsync()
     {
-        return _dbContext.HardDiskMedia
-            .AsNoTracking()
-            .Include(item => item.Ledger)
-            .Include(item => item.RegisterLock)
-            .Where(item => !item.IsDeleted)
+        var media = _dbContext.HardDiskMedia.AsNoTracking().Where(item => !item.IsDeleted);
+        var withLedger = media.Where(item => item.Ledger != null);
+
+        int missingLedgerCount = await media.CountAsync(item => item.Ledger == null);
+
+        var statusRows = await withLedger
+            .GroupBy(item => item.Ledger!.MediaStatus)
+            .Select(group => new { Status = group.Key, Count = group.Count() })
             .ToListAsync();
+        var natureRows = await withLedger
+            .GroupBy(item => item.Ledger!.MediaNature)
+            .Select(group => new { Nature = group.Key, Count = group.Count() })
+            .ToListAsync();
+
+        int needReturnCount = await withLedger.CountAsync(item => item.Ledger!.NeedReturn);
+        int temporaryNeedReturnCount = await withLedger.CountAsync(item =>
+            item.Ledger!.NeedReturn && item.Ledger.MediaStatus == HardDiskMedium.StatusOutTemporary);
+        int longTermNeedReturnCount = await withLedger.CountAsync(item =>
+            item.Ledger!.NeedReturn && item.Ledger.MediaStatus == HardDiskMedium.StatusOutLongTerm);
+
+        int missingLocationCount = await withLedger.CountAsync(item =>
+            (item.Ledger!.MediaStatus == HardDiskMedium.StatusInStockBlank
+                || item.Ledger.MediaStatus == HardDiskMedium.StatusInStockData
+                || item.Ledger.MediaStatus == HardDiskMedium.StatusInStockDamaged)
+            && (item.Ledger.StorageLocation == null || item.Ledger.StorageLocation.Trim() == string.Empty));
+        int outboundWithoutKeeperCount = await withLedger.CountAsync(item =>
+            (item.Ledger!.MediaStatus == HardDiskMedium.StatusOutTemporary
+                || item.Ledger.MediaStatus == HardDiskMedium.StatusOutLongTerm
+                || item.Ledger.MediaStatus == HardDiskMedium.StatusOutPermanent
+                || item.Ledger.MediaStatus == HardDiskMedium.StatusOutLost)
+            && (item.Ledger.HolderOrOrganization == null || item.Ledger.HolderOrOrganization.Trim() == string.Empty));
+        int lockedCount = await withLedger.CountAsync(item => item.RegisterLock != null);
+
+        var allLocationRows = await withLedger
+            .GroupBy(item => item.Ledger!.StorageLocation)
+            .Select(group => new { Label = group.Key, Count = group.Count() })
+            .ToListAsync();
+        var inStockLocationRows = await withLedger
+            .Where(item => item.Ledger!.MediaStatus == HardDiskMedium.StatusInStockBlank
+                || item.Ledger.MediaStatus == HardDiskMedium.StatusInStockData
+                || item.Ledger.MediaStatus == HardDiskMedium.StatusInStockDamaged)
+            .GroupBy(item => item.Ledger!.StorageLocation)
+            .Select(group => new { Label = group.Key, Count = group.Count() })
+            .ToListAsync();
+        var borrowedKeeperRows = await withLedger
+            .Where(item => item.Ledger!.MediaStatus == HardDiskMedium.StatusOutTemporary
+                || item.Ledger.MediaStatus == HardDiskMedium.StatusOutLongTerm)
+            .Select(item => new
+            {
+                item.Ledger!.HolderOrOrganization,
+                item.Ledger.StorageLocation
+            })
+            .ToListAsync();
+        var lockTypeRows = await withLedger
+            .Where(item => item.RegisterLock != null)
+            .GroupBy(item => item.RegisterLock!.BusinessType)
+            .Select(group => new { Label = group.Key, Count = group.Count() })
+            .ToListAsync();
+
+        string[] capacityStatuses =
+        [
+            HardDiskMedium.StatusOutTemporary,
+            HardDiskMedium.StatusOutLongTerm,
+            HardDiskMedium.StatusOutPermanent,
+            HardDiskMedium.StatusDisposed,
+            HardDiskMedium.StatusOutLost
+        ];
+        var capacitySourceRows = await withLedger
+            .Where(item => capacityStatuses.Contains(item.Ledger!.MediaStatus))
+            .Select(item => new { item.Ledger!.MediaStatus, item.Capacity })
+            .ToListAsync();
+
+        var applicationSourceRows = await _dbContext.HardDiskMediaApplications
+            .AsNoTracking()
+            .GroupBy(item => new { item.ApplicationType, item.ApplicationStatus, item.SignedAttachmentUploaded })
+            .Select(group => new
+            {
+                group.Key.ApplicationType,
+                group.Key.ApplicationStatus,
+                group.Key.SignedAttachmentUploaded,
+                Count = group.Count()
+            })
+            .ToListAsync();
+
+        DateTime recentSince = DateTime.Now.AddDays(-90);
+        var transactionRows = await _dbContext.HardDiskMediaTransactions
+            .AsNoTracking()
+            .Where(item => item.OperateTime >= recentSince)
+            .GroupBy(item => item.TransactionType)
+            .Select(group => new { Label = group.Key, Count = group.Count() })
+            .ToListAsync();
+
+        var disposalSourceRows = await _dbContext.HardDiskDisposalRecords
+            .AsNoTracking()
+            .GroupBy(item => new { item.Status, item.SignedAttachmentUploaded })
+            .Select(group => new
+            {
+                group.Key.Status,
+                group.Key.SignedAttachmentUploaded,
+                Count = group.Count()
+            })
+            .ToListAsync();
+
+        var inventorySourceRows = await _dbContext.HardDiskInventoryRegisterRecords
+            .AsNoTracking()
+            .GroupBy(item => new { item.Status, item.RegisterKind })
+            .Select(group => new
+            {
+                group.Key.Status,
+                group.Key.RegisterKind,
+                Count = group.Count()
+            })
+            .ToListAsync();
+
+        return new HardDiskOverviewAggregate
+        {
+            MissingLedgerCount = missingLedgerCount,
+            StatusCounts = ToCountMap(statusRows.Select(row => (row.Status ?? string.Empty, row.Count))),
+            NatureCounts = ToCountMap(natureRows.Select(row => (row.Nature ?? string.Empty, row.Count))),
+            NeedReturnCount = needReturnCount,
+            TemporaryNeedReturnCount = temporaryNeedReturnCount,
+            LongTermNeedReturnCount = longTermNeedReturnCount,
+            MissingLocationCount = missingLocationCount,
+            OutboundWithoutKeeperCount = outboundWithoutKeeperCount,
+            LockedCount = lockedCount,
+            AllLocations = ToLabelCounts(allLocationRows.Select(row => (row.Label ?? string.Empty, row.Count))),
+            InStockLocations = ToLabelCounts(inStockLocationRows.Select(row => (row.Label ?? string.Empty, row.Count))),
+            BorrowedKeepers = borrowedKeeperRows
+                .Select(row => new HardDiskOverviewKeeperSource(row.HolderOrOrganization, row.StorageLocation))
+                .ToList(),
+            LockTypes = ToLabelCounts(lockTypeRows.Select(row => (row.Label ?? string.Empty, row.Count))),
+            OutboundCapacities = capacitySourceRows
+                .Select(row => new HardDiskOverviewCapacityRow(row.MediaStatus, row.Capacity))
+                .ToList(),
+            Applications = applicationSourceRows
+                .Select(row => new HardDiskOverviewApplicationGroup(
+                    row.ApplicationType,
+                    row.ApplicationStatus,
+                    row.SignedAttachmentUploaded,
+                    row.Count))
+                .ToList(),
+            Disposals = disposalSourceRows
+                .Select(row => new HardDiskOverviewDisposalGroup(row.Status, row.SignedAttachmentUploaded, row.Count))
+                .ToList(),
+            Inventories = inventorySourceRows
+                .Select(row => new HardDiskOverviewInventoryGroup(row.Status, row.RegisterKind, row.Count))
+                .ToList(),
+            RecentTransactionTypes = ToLabelCounts(transactionRows.Select(row => (row.Label ?? string.Empty, row.Count)))
+        };
     }
 
-    public Task<List<HardDiskMediaApplication>> GetOverviewApplicationsAsync()
+    private static Dictionary<string, int> ToCountMap(IEnumerable<(string Label, int Count)> rows)
     {
-        return _dbContext.HardDiskMediaApplications
-            .AsNoTracking()
-            .ToListAsync();
+        var map = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var row in rows)
+        {
+            string key = row.Label;
+            map[key] = map.TryGetValue(key, out int current) ? current + row.Count : row.Count;
+        }
+
+        return map;
     }
 
-    public Task<List<HardDiskMediaTransaction>> GetOverviewTransactionsAsync()
-    {
-        return _dbContext.HardDiskMediaTransactions
-            .AsNoTracking()
-            .ToListAsync();
-    }
-
-    public Task<List<HardDiskDisposalRecord>> GetOverviewDisposalRecordsAsync()
-    {
-        return _dbContext.HardDiskDisposalRecords
-            .AsNoTracking()
-            .ToListAsync();
-    }
-
-    public Task<List<HardDiskInventoryRegisterRecord>> GetOverviewInventoryRegisterRecordsAsync()
-    {
-        return _dbContext.HardDiskInventoryRegisterRecords
-            .AsNoTracking()
-            .ToListAsync();
-    }
+    private static List<HardDiskOverviewLabelCount> ToLabelCounts(IEnumerable<(string Label, int Count)> rows)
+        => rows.Select(row => new HardDiskOverviewLabelCount(row.Label, row.Count)).ToList();
 
     public Task<List<HardDiskMedium>> GetSelectableMediaAsync()
     {

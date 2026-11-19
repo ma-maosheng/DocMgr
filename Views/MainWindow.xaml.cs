@@ -36,6 +36,8 @@ namespace DocMgr.Views
         private IToDoCenterService? _toDoCenter;
         private readonly IToDoNotificationPresenter _toDoNotificationPresenter;
         private DispatcherTimer? _sessionHeartbeatTimer;
+        private DateTime _lastSessionCheckUtc = DateTime.MinValue;
+        private static readonly TimeSpan SessionCheckInterval = TimeSpan.FromSeconds(8);
         private bool _isHandlingSessionInvalidation;
         private bool _isSessionInvalid;
         private Button? _activeNavButton;
@@ -136,12 +138,7 @@ namespace DocMgr.Views
             }
             catch (Exception ex)
             {
-                DocMgr.Infrastructure.AgentDebugLogging.AgentDebugSessionLog.WriteException(
-                    "W",
-                    "MainWindow.InitializeAfterLoginAsync",
-                    "login todo init failed",
-                    ex);
-                System.Diagnostics.Debug.WriteLine($"[MainWindow] 登录后初始化失败: {ex.Message}");
+                AppRuntimeLog.Write("登录后加载待办失败。", ex);
             }
         }
 
@@ -199,7 +196,7 @@ namespace DocMgr.Views
                 return;
             }
 
-            EnsureSessionIsValid();
+            EnsureSessionIsValid(force: true);
         }
 
         private void MainWindow_Activated(object? sender, EventArgs e)
@@ -209,7 +206,7 @@ namespace DocMgr.Views
                 return;
             }
 
-            EnsureSessionIsValid();
+            EnsureSessionIsValid(force: true);
         }
 
         private void MainWindow_PreviewMouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
@@ -232,7 +229,7 @@ namespace DocMgr.Views
             e.Handled = true;
         }
 
-        private bool EnsureSessionIsValid()
+        private bool EnsureSessionIsValid(bool force = false)
         {
             if (_isHandlingSessionInvalidation || _isSessionInvalid)
             {
@@ -245,18 +242,24 @@ namespace DocMgr.Views
                 return false;
             }
 
+            if (!force && DateTime.UtcNow - _lastSessionCheckUtc < SessionCheckInterval)
+            {
+                return true;
+            }
+
             UserSessionHeartbeatResult heartbeatResult;
             try
             {
                 using var scope = _scopeFactory.CreateScope();
                 var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
                 heartbeatResult = userService.RefreshSession(sessionId);
+                _lastSessionCheckUtc = DateTime.UtcNow;
             }
             catch (Exception ex)
             {
-                // 删库后库已不存在，心跳再连 DocMgr 会变成未处理异常并拦住退出。
-                System.Diagnostics.Debug.WriteLine(ex);
-                return false;
+                // 数据库短暂不可用时不拦住鼠标和键盘，避免整个窗口点不了。
+                AppRuntimeLog.Write("会话校验失败，本次不拦截操作。", ex);
+                return true;
             }
 
             if (heartbeatResult.IsValid)
@@ -1020,7 +1023,9 @@ namespace DocMgr.Views
             SetNavButton(BtnRoleMgr, true);
             SetNavButton(BtnApprovalWorkflow, true);
             SetNavButton(BtnServerPathMgr, true);
-            SetNavButton(BtnAdvancedData, true);
+            bool canUseAdvancedData = ArchiveRegisterBusinessRules.IsSystemAdministrator(CurrentUser);
+            BtnAdvancedData.Visibility = canUseAdvancedData ? Visibility.Visible : Visibility.Collapsed;
+            BtnAdvancedData.IsEnabled = canUseAdvancedData;
             SetNavButton(BtnBusinessLogicSettings, true);
             SetNavButton(BtnUserPreference, true);
             SetNavButton(BtnDbOperationLog, true);
@@ -1221,7 +1226,12 @@ namespace DocMgr.Views
 
         private void BtnAdvancedData_Click(object sender, RoutedEventArgs e)
         {
-            // 所有用户进入同一页：全部操作可见；浏览/导出全员可执行；备份/还原/删/清空/字典仅系统管理员可执行。
+            if (!ArchiveRegisterBusinessRules.IsSystemAdministrator(CurrentUser))
+            {
+                ShowMessageBox("仅系统管理员可使用高级数据管理。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
             TxtPageTitle.Text = "高级数据管理";
             MainContentFrame.Navigate(new AdvancedDataPage());
         }
@@ -1836,10 +1846,14 @@ namespace DocMgr.Views
 
         private void UpdateMenuVisibility()
         {
-            if (BtnAdvancedData != null)
+            if (BtnAdvancedData == null)
             {
-                BtnAdvancedData.Visibility = Visibility.Visible;
+                return;
             }
+
+            bool canUseAdvancedData = ArchiveRegisterBusinessRules.IsSystemAdministrator(CurrentUser);
+            BtnAdvancedData.Visibility = canUseAdvancedData ? Visibility.Visible : Visibility.Collapsed;
+            BtnAdvancedData.IsEnabled = canUseAdvancedData;
         }
     }
 }

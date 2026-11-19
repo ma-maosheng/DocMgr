@@ -55,9 +55,15 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private DateTime _archiveRoomHeadDateValue;
         private string _archiveDeputyPresident = string.Empty;
         private DateTime _archiveDeputyPresidentDate;
+        private string _productionHead = string.Empty;
+        private DateTime _productionHeadDate;
+        private string _productionVicePresident = string.Empty;
+        private DateTime _productionVicePresidentDate;
         private bool _enableDeptHead = true;
         private bool _enableArchiveRoomHead = true;
         private bool _enableArchiveDeputyPresident;
+        private bool _enableProductionHead;
+        private bool _enableProductionVicePresident;
         private string _approvalOpinion = "同意";
         private string _handoverApplicant = string.Empty;
         private string _handoverAdmin = string.Empty;
@@ -568,6 +574,48 @@ namespace DocMgr.ViewModels.HardDiskMedia
             private set => SetProperty(ref _enableArchiveDeputyPresident, value);
         }
 
+        /// <summary>生产科负责人（审批模式，按规则启用）。</summary>
+        public string ProductionHead
+        {
+            get => _productionHead;
+            set => SetProperty(ref _productionHead, value);
+        }
+
+        /// <summary>生产科负责人日期（审批模式）。</summary>
+        public DateTime ProductionHeadDate
+        {
+            get => _productionHeadDate;
+            set => SetProperty(ref _productionHeadDate, value);
+        }
+
+        /// <summary>分管生产院长签字（审批模式，按规则启用）。</summary>
+        public string ProductionVicePresident
+        {
+            get => _productionVicePresident;
+            set => SetProperty(ref _productionVicePresident, value);
+        }
+
+        /// <summary>分管生产院长签字日期（审批模式）。</summary>
+        public DateTime ProductionVicePresidentDate
+        {
+            get => _productionVicePresidentDate;
+            set => SetProperty(ref _productionVicePresidentDate, value);
+        }
+
+        /// <summary>是否启用生产科负责人签字栏。</summary>
+        public bool EnableProductionHead
+        {
+            get => _enableProductionHead;
+            private set => SetProperty(ref _enableProductionHead, value);
+        }
+
+        /// <summary>是否启用分管生产院长签字栏。</summary>
+        public bool EnableProductionVicePresident
+        {
+            get => _enableProductionVicePresident;
+            private set => SetProperty(ref _enableProductionVicePresident, value);
+        }
+
         /// <summary>审批意见（审批模式）。</summary>
         public string ApprovalOpinion
         {
@@ -871,6 +919,8 @@ namespace DocMgr.ViewModels.HardDiskMedia
             EnableDeptHead = chain.DeptHead.IsEnabled;
             EnableArchiveRoomHead = chain.ArchiveRoomHead.IsEnabled;
             EnableArchiveDeputyPresident = chain.ArchiveDeputyPresident.IsEnabled;
+            EnableProductionHead = chain.ProductionHead.IsEnabled;
+            EnableProductionVicePresident = chain.ProductionVicePresident.IsEnabled;
 
             DeptHead = _editingApplication.DeptHead;
             DeptHeadDate = _editingApplication.ApplyTime == default ? today : _editingApplication.ApplyTime.Date;
@@ -878,6 +928,11 @@ namespace DocMgr.ViewModels.HardDiskMedia
             ArchiveRoomHeadDate = (_editingApplication.ArchiveRoomHeadDate ?? today).Date;
             ArchiveDeputyPresident = _editingApplication.ArchiveDeputyPresident;
             ArchiveDeputyPresidentDate = (_editingApplication.ArchiveDeputyPresidentDate ?? today).Date;
+            ProductionHead = _editingApplication.ProductionHead ?? string.Empty;
+            ProductionHeadDate = (_editingApplication.ProductionHeadDate ?? today).Date;
+            ProductionVicePresident = _editingApplication.ProductionVicePresident ?? string.Empty;
+            ProductionVicePresidentDate = (_editingApplication.ProductionVicePresidentDate ?? today).Date;
+            NotifyShellAliasPropertiesChanged();
 
             ApprovalOpinion = string.IsNullOrWhiteSpace(_editingApplication.ApprovalOpinion)
                 ? "同意"
@@ -1093,6 +1148,18 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 return;
             }
 
+            if (EnableProductionHead && string.IsNullOrWhiteSpace(ProductionHead))
+            {
+                _dialogService.ShowMessage($"请填写{ApprovalWorkflowDomainValues.DisplayProductionHead}。");
+                return;
+            }
+
+            if (EnableProductionVicePresident && string.IsNullOrWhiteSpace(ProductionVicePresident))
+            {
+                _dialogService.ShowMessage($"请填写{ApprovalWorkflowDomainValues.DisplayProductionVicePresident}。");
+                return;
+            }
+
             if (IsTargetLocationRequired &&
                 string.IsNullOrWhiteSpace(SelectedReturnTargetLocationOption?.Location ?? TargetLocation))
             {
@@ -1105,6 +1172,10 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 _editingApplication.DeptHead = DeptHead?.Trim() ?? string.Empty;
                 _editingApplication.ArchiveRoomHead = ArchiveRoomHead?.Trim() ?? string.Empty;
                 _editingApplication.ArchiveDeputyPresident = ArchiveDeputyPresident?.Trim() ?? string.Empty;
+                _editingApplication.ProductionHead = EnableProductionHead ? ProductionHead?.Trim() ?? string.Empty : string.Empty;
+                _editingApplication.ProductionVicePresident = EnableProductionVicePresident
+                    ? ProductionVicePresident?.Trim() ?? string.Empty
+                    : string.Empty;
                 var missing = await HardDiskMediaApplicationViewModelHelper.CollectMissingApprovalErrorsAsync(
                     _editingApplication,
                     _approvalWorkflowService,
@@ -1124,6 +1195,10 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 ArchiveRoomHeadDate = ArchiveRoomHeadDate,
                 ArchiveDeputyPresident = ArchiveDeputyPresident.Trim(),
                 ArchiveDeputyPresidentDate = ArchiveDeputyPresidentDate,
+                ProductionHead = EnableProductionHead ? ProductionHead.Trim() : string.Empty,
+                ProductionHeadDate = EnableProductionHead ? ProductionHeadDate : null,
+                ProductionVicePresident = EnableProductionVicePresident ? ProductionVicePresident.Trim() : string.Empty,
+                ProductionVicePresidentDate = EnableProductionVicePresident ? ProductionVicePresidentDate : null,
                 ApprovalOpinion = string.IsNullOrWhiteSpace(ApprovalOpinion) ? "同意" : ApprovalOpinion.Trim(),
                 TargetLocation = ResolveTargetLocationForSave(ResolveApplicationTypeByInspectionResult())
             };

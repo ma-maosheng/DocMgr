@@ -986,7 +986,8 @@ namespace DocMgr.Services.YearlyArchive
 
         private static void ValidateNewElectronicArchiveConstraints(
             YearlyElectronicArchiveUnit archiveUnit,
-            IEnumerable<YearlyArchiveRegisterRecord> records)
+            IEnumerable<YearlyArchiveRegisterRecord> records,
+            bool allowMultipleProjectsOnOpticalDisc = false)
         {
             ArgumentNullException.ThrowIfNull(archiveUnit);
             ArgumentNullException.ThrowIfNull(records);
@@ -996,7 +997,8 @@ namespace DocMgr.Services.YearlyArchive
                 throw new InvalidOperationException("电子介质袋的立档操作年不能为空。");
             }
 
-            if (ArchiveFilingBusinessRules.IsOpticalDiscArchiveCarrierType(archiveUnit.StorageCarrierType))
+            if (ArchiveFilingBusinessRules.IsOpticalDiscArchiveCarrierType(archiveUnit.StorageCarrierType)
+                && !allowMultipleProjectsOnOpticalDisc)
             {
                 EnsureRecordsShareOneProject(records);
             }

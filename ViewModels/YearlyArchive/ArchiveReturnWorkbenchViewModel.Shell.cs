@@ -39,20 +39,20 @@ public sealed partial class ArchiveReturnWorkbenchViewModel
     /// <summary>壳：其他附件（办结后增补；由 LoadAttachmentsAsync 按分类装入）。</summary>
     public ObservableCollection<SystemAttachment> OtherAttachments => _shellOtherAttachments;
 
-    /// <summary>壳：部门审核卡（完好归还或灭失均显示）。</summary>
-    public bool ShowDeptHead => ShowIntactApprovalSigner || ShowLossApprovalSigners;
+    /// <summary>壳：部门审核卡。</summary>
+    public bool ShowDeptHead => IsEditing && (_approvalChain?.DeptHead.IsEnabled ?? false);
 
-    /// <summary>壳：资料室签字卡（仅灭失）。</summary>
-    public bool ShowArchiveRoomHead => ShowLossApprovalSigners;
+    /// <summary>壳：资料室签字卡。</summary>
+    public bool ShowArchiveRoomHead => IsEditing && (_approvalChain?.ArchiveRoomHead.IsEnabled ?? false);
 
-    /// <summary>壳：生产科签字卡（仅灭失）。</summary>
-    public bool ShowProductionHead => ShowLossApprovalSigners;
+    /// <summary>壳：生产科签字卡。</summary>
+    public bool ShowProductionHead => IsEditing && (_approvalChain?.ProductionHead.IsEnabled ?? false);
 
-    /// <summary>壳：分管资料院长签字卡（仅灭失）。</summary>
-    public bool ShowArchiveDeputyPresident => ShowLossApprovalSigners;
+    /// <summary>壳：分管资料院长签字卡。</summary>
+    public bool ShowArchiveDeputyPresident => IsEditing && (_approvalChain?.ArchiveDeputyPresident.IsEnabled ?? false);
 
-    /// <summary>壳：分管生产院长签字卡（仅灭失）。</summary>
-    public bool ShowProductionVicePresident => ShowLossApprovalSigners;
+    /// <summary>壳：分管生产院长签字卡。</summary>
+    public bool ShowProductionVicePresident => IsEditing && (_approvalChain?.ProductionVicePresident.IsEnabled ?? false);
 
     /// <summary>壳：审核区分组标题。</summary>
     public bool ShowReviewSignerSection => ShowDeptHead || ShowArchiveRoomHead || ShowProductionHead;

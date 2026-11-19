@@ -3,6 +3,8 @@ using System.IO;
 using System.Windows.Input;
 using DocMgr.Models.SystemSettings;
 using DocMgr.Services.Interfaces;
+using DocMgr.Services.Shared;
+using DocMgr.Services.SystemSettings;
 using DocMgr.Services.YearlyArchive;
 using DocMgr.ViewModels.Base;
 
@@ -73,6 +75,7 @@ namespace DocMgr.ViewModels.SystemSettings
             MoveDownCommand = new RelayCommand(async _ => await MovePriorityAsync(1), _ => CanMaintain && CanMoveSelected(1));
             ResetDefaultsCommand = new RelayCommand(async _ => await ResetDefaultsAsync(), _ => CanMaintain && !IsEditing);
             ExportRulesCommand = new RelayCommand(async _ => await ExportRulesAsync(), _ => !IsEditing);
+            ExportWordCommand = new RelayCommand(async _ => await ExportWordAsync(), _ => !IsEditing);
             ImportRulesCommand = new RelayCommand(async _ => await ImportRulesAsync(), _ => CanMaintain && !IsEditing);
             RefreshCommand = new RelayCommand(async _ => await LoadRulesAsync(), _ => !IsEditing);
         }
@@ -275,6 +278,7 @@ namespace DocMgr.ViewModels.SystemSettings
         public ICommand MoveDownCommand { get; }
         public ICommand ResetDefaultsCommand { get; }
         public ICommand ExportRulesCommand { get; }
+        public ICommand ExportWordCommand { get; }
         public ICommand ImportRulesCommand { get; }
         public ICommand RefreshCommand { get; }
 
@@ -693,6 +697,39 @@ namespace DocMgr.ViewModels.SystemSettings
             catch (Exception ex)
             {
                 _dialogService.ShowError(ex.Message);
+            }
+        }
+
+        private async Task ExportWordAsync()
+        {
+            if (_userContextService.CurrentUser == null)
+            {
+                return;
+            }
+
+            string defaultName = $"审核审批规则说明_{DateTime.Now:yyyyMMdd_HHmmss}.docx";
+            string? filePath = _dialogService.SaveFileDialog(
+                "Word 文档|*.docx",
+                "导出审核审批规则说明",
+                defaultName);
+            if (string.IsNullOrWhiteSpace(filePath))
+            {
+                return;
+            }
+
+            try
+            {
+                IReadOnlyList<ApprovalWorkflowRule> rules = await _approvalWorkflowService.GetRulesAsync();
+                ApprovalWorkflowWordExportSupport.ExportToFile(
+                    filePath,
+                    rules,
+                    _userService.GetAllUsers(),
+                    DateTime.Now);
+                WordExportOpenPromptSupport.NotifySavedAndOfferOpen(filePath, _dialogService);
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError("导出 Word 失败：" + ex.Message);
             }
         }
 

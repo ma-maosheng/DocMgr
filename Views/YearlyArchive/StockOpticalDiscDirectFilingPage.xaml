@@ -198,40 +198,53 @@
                                   IsEditable="True"
                                   Text="{Binding Year, UpdateSourceTrigger=PropertyChanged}"
                                   Height="{StaticResource FormControlHeight}" Margin="0,0,12,0"
-                                  ToolTip="开放域：列出已有年度；也可手输。不从光盘目录推断"/>
+                                  ToolTip="开放域：列出已有年度；也可手输。所属目录一个年度且目录名是四位数字时，会填入该年度"/>
                         <TextBlock Grid.Column="2" Text="项目：" Style="{StaticResource LabelStyle}"/>
                         <ComboBox Grid.Column="3"
                                   ItemsSource="{Binding ProjectNameOptions}"
                                   IsEditable="True"
+                                  IsEnabled="{Binding IsProjectFormEnabled}"
                                   Text="{Binding ProjectName, UpdateSourceTrigger=PropertyChanged}"
                                   Height="{StaticResource FormControlHeight}" Margin="0,0,12,0"
-                                  ToolTip="开放域：列出当前年度已登记项目；也可手输。一张光盘只登记一个项目"/>
+                                  ToolTip="开放域：列出当前年度已登记项目；也可手输。所属目录一个项目时默认取目录名；所属目录一个年度时项目来自子目录"/>
                         <TextBlock Grid.Column="4" Text="项目编号：" Style="{StaticResource LabelStyle}"/>
                         <TextBox Grid.Column="5" Text="{Binding ProjectCode, UpdateSourceTrigger=PropertyChanged}"
+                                 IsEnabled="{Binding IsProjectFormEnabled}"
                                  Height="{StaticResource FormControlHeight}"/>
                         <Button Grid.Column="6" Content="查看年度已有项目" Command="{Binding ViewYearProjectsCommand}"
                                 Style="{StaticResource InlineActionButtonStyle}"
                                 ToolTip="{Binding YearProjectHint, Mode=OneWay}"/>
                     </Grid>
-                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="112,0,0,4">
+                    <WrapPanel DockPanel.Dock="Top" Margin="112,0,0,4">
                         <RadioButton Content="所属目录一个子项" GroupName="DiscAssignMode"
                                      IsChecked="{Binding AssignMode, Converter={StaticResource StringMatchRadioConverter}, ConverterParameter=WholeDisc, Mode=TwoWay}"
-                                     VerticalAlignment="Center" Margin="0,0,16,0"/>
-                        <RadioButton Content="按文件夹指派" GroupName="DiscAssignMode"
+                                     VerticalAlignment="Center" Margin="0,0,16,4"
+                                     ToolTip="把资料所属目录整体登记为一个子项"/>
+                        <RadioButton Content="所属目录一类资料" GroupName="DiscAssignMode"
                                      IsEnabled="{Binding CanAssignByFolder}"
                                      IsChecked="{Binding AssignMode, Converter={StaticResource StringMatchRadioConverter}, ConverterParameter=Folder, Mode=TwoWay}"
-                                     VerticalAlignment="Center" Margin="0,0,16,0"
-                                     ToolTip="把一级业务文件夹分别指派为资料子项"/>
-                        <RadioButton Content="按后缀指派" GroupName="DiscAssignMode"
+                                     VerticalAlignment="Center" Margin="0,0,16,4"
+                                     ToolTip="所选目录是资料名称，其下每个子目录是一条资料子项"/>
+                        <RadioButton Content="所属目录一个项目" GroupName="DiscAssignMode"
+                                     IsEnabled="{Binding CanAssignByProject}"
+                                     IsChecked="{Binding AssignMode, Converter={StaticResource StringMatchRadioConverter}, ConverterParameter=Project, Mode=TwoWay}"
+                                     VerticalAlignment="Center" Margin="0,0,16,4"
+                                     ToolTip="所选目录是一个项目，其下子目录是资料名称，再下一级子目录是资料子项"/>
+                        <RadioButton Content="所属目录一个年度" GroupName="DiscAssignMode"
+                                     IsEnabled="{Binding CanAssignByYear}"
+                                     IsChecked="{Binding AssignMode, Converter={StaticResource StringMatchRadioConverter}, ConverterParameter=Year, Mode=TwoWay}"
+                                     VerticalAlignment="Center" Margin="0,0,16,4"
+                                     ToolTip="所选目录是一个年度，其下子目录是项目，再下一级是资料名称，再下一级是资料子项"/>
+                        <RadioButton Content="按文件后缀指派资料子项" GroupName="DiscAssignMode"
                                      IsEnabled="{Binding CanAssignByExtension}"
                                      IsChecked="{Binding AssignMode, Converter={StaticResource StringMatchRadioConverter}, ConverterParameter=Extension, Mode=TwoWay}"
-                                     VerticalAlignment="Center" Margin="0,0,16,0"
-                                     ToolTip="把资料所属目录及其子目录中的文件按后缀分成子项，再用资料名称归组"/>
+                                     VerticalAlignment="Center" Margin="0,0,16,4"
+                                     ToolTip="把资料所属目录及其子目录中的文件按后缀分成资料子项，再用资料名称归组"/>
                         <CheckBox Content="{Binding IgnoreConfirmText, Mode=OneWay}"
                                   IsChecked="{Binding IgnoredContentAcknowledged}"
                                   VerticalAlignment="Center"
                                   Visibility="{Binding HasUnassignedContent, Converter={StaticResource BoolToVisConverter}}"/>
-                    </StackPanel>
+                    </WrapPanel>
                     <StackPanel DockPanel.Dock="Top" Margin="112,0,0,4"
                                 Visibility="{Binding IsExtensionAssignMode, Converter={StaticResource BoolToVisConverter}}">
                         <TextBlock Text="统计资料所属目录及其子目录中的文件。勾选纳入；资料名称相同的后缀归成一份资料，子项名就是后缀。"
@@ -385,6 +398,7 @@
                               ScrollViewer.HorizontalScrollBarVisibility="Auto">
                         <DataGrid.Columns>
                             <DataGridCheckBoxColumn Header="纳入" Binding="{Binding Include, UpdateSourceTrigger=PropertyChanged}" Width="52"/>
+                            <DataGridTextColumn x:Name="ProjectColumn" Header="项目" Binding="{Binding ProjectName, UpdateSourceTrigger=PropertyChanged}" Width="120" Visibility="Collapsed"/>
                             <DataGridTextColumn Header="资料名称" Binding="{Binding MaterialName, UpdateSourceTrigger=PropertyChanged}" Width="140"/>
                             <DataGridTextColumn Header="子项" Binding="{Binding ItemName, UpdateSourceTrigger=PropertyChanged}" Width="120"/>
                             <DataGridTextColumn Header="盘上目录" Binding="{Binding PhysicalPath, Mode=OneWay}" Width="2*" IsReadOnly="True"/>

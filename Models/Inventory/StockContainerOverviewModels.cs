@@ -146,6 +146,24 @@ namespace DocMgr.Models.Inventory
         public DateTime? ArchivedFrom { get; set; }
 
         public DateTime? ArchivedTo { get; set; }
+
+        /// <summary>从 1 开始。与 <see cref="PageSize"/> 同时有效时只返回该页。</summary>
+        public int PageNumber { get; set; } = 1;
+
+        /// <summary>小于等于 0 表示返回全部匹配容器（导出、全局浏览）。</summary>
+        public int PageSize { get; set; }
+    }
+
+    /// <summary>
+    /// 库管总览一次查询结果。总数是全部命中，行在分页时只含当前页。
+    /// </summary>
+    public sealed class StockContainerSearchResult
+    {
+        public IReadOnlyList<StockContainerOverviewRow> Rows { get; init; } = Array.Empty<StockContainerOverviewRow>();
+
+        public int TotalCount { get; init; }
+
+        public int BorrowedCount { get; init; }
     }
 
     /// <summary>

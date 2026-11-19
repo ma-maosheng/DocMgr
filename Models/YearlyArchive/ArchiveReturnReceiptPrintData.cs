@@ -30,7 +30,7 @@ namespace DocMgr.Models.YearlyArchive
         public List<ArchiveReturnApprovalSignatureLine> HandoverSignatureLines { get; init; } = new();
 
         /// <summary>
-        /// 审核/审批人签字栏：正常归还仅部门负责人；灭失时含全部审核审批人。
+        /// 审核/审批人签字栏：按命中规则启用的节点逐行输出。
         /// 表单标签不含「借出时」前缀。
         /// </summary>
         public List<ArchiveReturnApprovalSignatureLine> ApprovalSignatureLines { get; init; } = new();

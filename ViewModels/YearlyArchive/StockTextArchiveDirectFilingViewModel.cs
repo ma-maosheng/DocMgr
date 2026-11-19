@@ -39,8 +39,6 @@ namespace DocMgr.ViewModels.YearlyArchive
         private string _year = string.Empty;
         private string _projectName = string.Empty;
         private string _projectCode = string.Empty;
-        private string _materialName = string.Empty;
-        private string _previousProjectNameForMaterialDefault = string.Empty;
         private string _projectHint = "请填写实施年度与项目名称。";
         private string _yearProjectHint = "填写年度后，可查看该年已有项目。";
         private string _businessNumberHint = "确认立档后：生成一条建档单号，并新建一个模拟档案盒。";
@@ -88,9 +86,15 @@ namespace DocMgr.ViewModels.YearlyArchive
             RemoveMediaGroupCommand = new RelayCommand(
                 param => RemoveMediaGroup(param as StockTextArchiveMediaGroupViewModel),
                 param => !IsBusy && param is StockTextArchiveMediaGroupViewModel);
-            AddMediaItemCommand = new RelayCommand(
-                param => AddMediaItem(param as StockTextArchiveMediaGroupViewModel),
+            AddMaterialCommand = new RelayCommand(
+                param => AddMaterial(param as StockTextArchiveMediaGroupViewModel),
                 param => !IsBusy && param is StockTextArchiveMediaGroupViewModel);
+            RemoveMaterialCommand = new RelayCommand(
+                param => RemoveMaterial(param as StockTextArchiveMaterialGroupViewModel),
+                param => !IsBusy && param is StockTextArchiveMaterialGroupViewModel);
+            AddMediaItemCommand = new RelayCommand(
+                param => AddMediaItem(param as StockTextArchiveMaterialGroupViewModel),
+                param => !IsBusy && param is StockTextArchiveMaterialGroupViewModel);
             RemoveMediaItemCommand = new RelayCommand(
                 param => RemoveMediaItem(param as StockTextArchiveMediaItemViewModel),
                 param => !IsBusy && param is StockTextArchiveMediaItemViewModel);
@@ -122,6 +126,8 @@ namespace DocMgr.ViewModels.YearlyArchive
         public ICommand ViewYearProjectsCommand { get; }
         public ICommand AddMediaGroupCommand { get; }
         public ICommand RemoveMediaGroupCommand { get; }
+        public ICommand AddMaterialCommand { get; }
+        public ICommand RemoveMaterialCommand { get; }
         public ICommand AddMediaItemCommand { get; }
         public ICommand RemoveMediaItemCommand { get; }
         public ICommand RecommendSlotCommand { get; }
@@ -183,11 +189,10 @@ namespace DocMgr.ViewModels.YearlyArchive
             get => _projectName;
             set
             {
-                string previous = _projectName;
                 if (SetProperty(ref _projectName, value))
                 {
                     EnsureOption(ProjectNameOptions, value);
-                    ApplyMaterialNameDefaultFromProject(previous, value);
+                    ApplyMaterialNameDefaultFromProject(value);
                     TryFillProjectCodeFromRegistered(value);
                     RefreshProjectHint();
                     _pageDb.RunInBackground(LoadSlotOptionsAsync);
@@ -199,12 +204,6 @@ namespace DocMgr.ViewModels.YearlyArchive
         {
             get => _projectCode;
             set => SetProperty(ref _projectCode, value);
-        }
-
-        public string MaterialName
-        {
-            get => _materialName;
-            set => SetProperty(ref _materialName, value);
         }
 
         public string ProjectHint
@@ -367,8 +366,9 @@ namespace DocMgr.ViewModels.YearlyArchive
             get
             {
                 int groupCount = MediaGroups.Count;
-                int itemCount = MediaGroups.Sum(group => group.Items.Count);
-                return $"共 {groupCount} 组介质、{itemCount} 条子项。";
+                int materialCount = MediaGroups.Sum(group => group.Materials.Count);
+                int itemCount = MediaGroups.Sum(group => group.MediaCount);
+                return $"共 {groupCount} 组介质、{materialCount} 份资料、{itemCount} 条子项。";
             }
         }
 
@@ -446,7 +446,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
             else
             {
-                foreach (var item in MediaGroups.SelectMany(group => group.Items))
+                foreach (var item in EnumerateItems())
                 {
                     item.EnsureDefaultsFromPage();
                 }
@@ -499,19 +499,21 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
         }
 
-        private void ApplyMaterialNameDefaultFromProject(string previousProjectName, string newProjectName)
+        /// <summary>
+        /// 仍跟随项目名称的那一份资料（页面第一份，且用户未改成其他名称）随项目名称更新。
+        /// 其余资料名称保持用户填写的分类，便于一次办完同一项目的多类资料。
+        /// </summary>
+        private void ApplyMaterialNameDefaultFromProject(string newProjectName)
         {
             string trimmedNew = newProjectName?.Trim() ?? string.Empty;
-            string trimmedMaterial = MaterialName?.Trim() ?? string.Empty;
-            string trimmedPrevious = previousProjectName?.Trim() ?? string.Empty;
-            string lastDefault = _previousProjectNameForMaterialDefault?.Trim() ?? string.Empty;
-
-            if (string.IsNullOrWhiteSpace(trimmedMaterial)
-                || string.Equals(trimmedMaterial, trimmedPrevious, StringComparison.Ordinal)
-                || string.Equals(trimmedMaterial, lastDefault, StringComparison.Ordinal))
+            foreach (var material in EnumerateMaterials())
             {
-                MaterialName = trimmedNew;
-                _previousProjectNameForMaterialDefault = trimmedNew;
+                if (!material.FollowsProjectNameDefault)
+                {
+                    continue;
+                }
+
+                material.ApplyProjectNameDefault(trimmedNew);
             }
         }
 
@@ -525,7 +527,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 OrganizationFormOptions,
                 _textSubCategories,
                 _mapSubCategories);
-            group.AddItem();
+            group.AddMaterial(followsProjectNameDefault: MediaGroups.Count == 0);
             AttachMediaGroup(group);
             MediaGroups.Add(group);
             RaiseMediaSummaryChanged();
@@ -549,27 +551,57 @@ namespace DocMgr.ViewModels.YearlyArchive
             RaiseMediaSummaryChanged();
         }
 
-        private void AddMediaItem(StockTextArchiveMediaGroupViewModel? group)
+        private void AddMaterial(StockTextArchiveMediaGroupViewModel? group)
         {
-            group?.AddItem();
+            if (group == null)
+            {
+                return;
+            }
+
+            group.AddMaterial(followsProjectNameDefault: false);
+            RaiseMediaSummaryChanged();
+        }
+
+        private void RemoveMaterial(StockTextArchiveMaterialGroupViewModel? material)
+        {
+            if (material?.Owner == null)
+            {
+                return;
+            }
+
+            if (material.Owner.Materials.Count <= 1)
+            {
+                _dialogService.ShowMessage("每组介质至少保留一份资料名称。");
+                return;
+            }
+
+            material.Owner.Materials.Remove(material);
+            material.Owner.RefreshMediaCount();
+            RaiseMediaSummaryChanged();
+        }
+
+        private void AddMediaItem(StockTextArchiveMaterialGroupViewModel? material)
+        {
+            material?.AddItem();
+            material?.Owner.RefreshMediaCount();
             RaiseMediaSummaryChanged();
         }
 
         private void RemoveMediaItem(StockTextArchiveMediaItemViewModel? item)
         {
-            if (item?.Owner == null)
+            if (item?.Material == null)
             {
                 return;
             }
 
-            if (item.Owner.Items.Count <= 1)
+            if (item.Material.Items.Count <= 1)
             {
-                _dialogService.ShowMessage("每组介质至少保留一条资料子项。");
+                _dialogService.ShowMessage("每份资料至少保留一条资料子项。");
                 return;
             }
 
-            item.Owner.Items.Remove(item);
-            item.Owner.RefreshMediaCount();
+            item.Material.Items.Remove(item);
+            item.Material.Owner.RefreshMediaCount();
             RaiseMediaSummaryChanged();
         }
 
@@ -581,13 +613,71 @@ namespace DocMgr.ViewModels.YearlyArchive
         private void AttachMediaGroup(StockTextArchiveMediaGroupViewModel group)
         {
             group.PropertyChanged += OnMediaGroupPropertyChanged;
-            group.Items.CollectionChanged += OnMediaItemsChanged;
+            group.Materials.CollectionChanged += OnMaterialsChanged;
+            foreach (var material in group.Materials)
+            {
+                AttachMaterial(material);
+            }
         }
 
         private void DetachMediaGroup(StockTextArchiveMediaGroupViewModel group)
         {
             group.PropertyChanged -= OnMediaGroupPropertyChanged;
-            group.Items.CollectionChanged -= OnMediaItemsChanged;
+            group.Materials.CollectionChanged -= OnMaterialsChanged;
+            foreach (var material in group.Materials)
+            {
+                DetachMaterial(material);
+            }
+        }
+
+        private void OnMaterialsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        {
+            if (e.OldItems != null)
+            {
+                foreach (StockTextArchiveMaterialGroupViewModel material in e.OldItems)
+                {
+                    DetachMaterial(material);
+                }
+            }
+
+            if (e.NewItems != null)
+            {
+                foreach (StockTextArchiveMaterialGroupViewModel material in e.NewItems)
+                {
+                    AttachMaterial(material);
+                }
+            }
+
+            RaiseMediaSummaryChanged();
+        }
+
+        private void AttachMaterial(StockTextArchiveMaterialGroupViewModel material)
+            => material.Items.CollectionChanged += OnMediaItemsChanged;
+
+        private void DetachMaterial(StockTextArchiveMaterialGroupViewModel material)
+            => material.Items.CollectionChanged -= OnMediaItemsChanged;
+
+        private IEnumerable<StockTextArchiveMaterialGroupViewModel> EnumerateMaterials()
+            => MediaGroups.SelectMany(group => group.Materials);
+
+        private IEnumerable<StockTextArchiveMediaItemViewModel> EnumerateItems()
+            => EnumerateMaterials().SelectMany(material => material.Items);
+
+        private string BuildMaterialNameSummary()
+        {
+            var names = new List<string>();
+            foreach (var material in EnumerateMaterials())
+            {
+                string name = material.MaterialName?.Trim() ?? string.Empty;
+                if (name.Length == 0 || names.Contains(name, StringComparer.Ordinal))
+                {
+                    continue;
+                }
+
+                names.Add(name);
+            }
+
+            return string.Join("、", names);
         }
 
         private void OnMediaGroupPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -895,7 +985,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private void RefreshBusinessNumberHint()
         {
-            int itemCount = MediaGroups.Sum(group => group.Items.Count);
+            int itemCount = MediaGroups.Sum(group => group.MediaCount);
             if (itemCount <= 0 || string.IsNullOrWhiteSpace(Year))
             {
                 BusinessNumberHint = "确认立档后：生成一条建档单号，并新建一个模拟档案盒。";
@@ -1050,7 +1140,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             string confirmText =
                 $"即将以档案盒为单位直接立档（跳过申请审批）。\n"
                 + $"年度/项目：{Year} / {ProjectName}\n"
-                + $"资料名称：{MaterialName}\n"
+                + $"资料名称：{BuildMaterialNameSummary()}\n"
                 + $"来源：{SourceType}　提供单位：{ProvideUnit}\n"
                 + $"盒规格：{SelectedSpec}\n"
                 + $"物理位置编号：{(string.IsNullOrWhiteSpace(PhysicalLocationCode) ? SelectedSlotOption?.Location : PhysicalLocationCode)}\n"
@@ -1087,17 +1177,22 @@ namespace DocMgr.ViewModels.YearlyArchive
             var groups = MediaGroups.Select(group => new StockTextArchiveMediaGroupDraft
             {
                 MediaType = group.MediaType?.Trim() ?? string.Empty,
-                Items = group.Items.Select(item => new StockTextArchiveMediaItemDraft
+                Materials = group.Materials.Select(material => new StockTextArchiveMaterialDraft
                 {
-                    ContentDesc = item.ContentDesc?.Trim() ?? string.Empty,
-                    ConfidentialLevel = item.ConfidentialLevel?.Trim() ?? string.Empty,
-                    ContentCount = item.ContentCount,
-                    Note = item.Note?.Trim() ?? string.Empty,
-                    MaterialCategory = item.MaterialCategory?.Trim() ?? string.Empty,
-                    SubCategory = item.SubCategory?.Trim() ?? string.Empty,
-                    OrganizationForm = item.OrganizationForm?.Trim() ?? string.Empty,
-                    SourceType = item.SourceType?.Trim() ?? string.Empty,
-                    ProvideUnit = item.ProvideUnit?.Trim() ?? string.Empty
+                    MaterialName = material.MaterialName?.Trim() ?? string.Empty,
+                    Items = material.Items.Select(item => new StockTextArchiveMediaItemDraft
+                    {
+                        ContentDesc = item.ContentDesc?.Trim() ?? string.Empty,
+                        ConfidentialLevel = item.ConfidentialLevel?.Trim() ?? string.Empty,
+                        ContentCount = item.ContentCount,
+                        Note = item.Note?.Trim() ?? string.Empty,
+                        MaterialCategory = item.MaterialCategory?.Trim() ?? string.Empty,
+                        SubCategory = item.SubCategory?.Trim() ?? string.Empty,
+                        OrganizationForm = item.OrganizationForm?.Trim() ?? string.Empty,
+                        SourceType = item.SourceType?.Trim() ?? string.Empty,
+                        ProvideUnit = item.ProvideUnit?.Trim() ?? string.Empty,
+                        MaterialName = material.MaterialName?.Trim() ?? string.Empty
+                    }).ToList()
                 }).ToList()
             }).ToList();
 
@@ -1106,7 +1201,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 Year = Year?.Trim() ?? string.Empty,
                 ProjectName = ProjectName?.Trim() ?? string.Empty,
                 ProjectCode = ProjectCode?.Trim() ?? string.Empty,
-                MaterialName = MaterialName?.Trim() ?? string.Empty,
+                MaterialName = BuildMaterialNameSummary(),
                 SourceType = SourceType?.Trim() ?? string.Empty,
                 ArchivePurpose = ArchivePurpose?.Trim() ?? string.Empty,
                 ProvideUnit = ProvideUnit?.Trim() ?? string.Empty,
@@ -1125,8 +1220,6 @@ namespace DocMgr.ViewModels.YearlyArchive
             Year = string.Empty;
             ProjectName = string.Empty;
             ProjectCode = string.Empty;
-            MaterialName = string.Empty;
-            _previousProjectNameForMaterialDefault = string.Empty;
             SourceType = ArchiveRegisterDomainValues.SourceTypeInternal;
             ProvideUnit = ResolveDefaultInternalProvideUnit();
             Remarks = string.Empty;
@@ -1209,7 +1302,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
-            foreach (var item in MediaGroups.SelectMany(group => group.Items))
+            foreach (var item in EnumerateItems())
             {
                 bool sourceMatches = string.Equals(item.SourceType, previousSource, StringComparison.Ordinal);
                 bool provideMatches = string.Equals(item.ProvideUnit, previousProvide, StringComparison.Ordinal);
@@ -1231,7 +1324,7 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
-            foreach (var item in MediaGroups.SelectMany(group => group.Items))
+            foreach (var item in EnumerateItems())
             {
                 if (string.Equals(item.ProvideUnit, previousProvide, StringComparison.Ordinal))
                 {
@@ -1311,8 +1404,8 @@ namespace DocMgr.ViewModels.YearlyArchive
             OrganizationFormOptions = organizationFormOptions;
             TextSubCategories = textSubCategories;
             MapSubCategories = mapSubCategories;
-            Items = new ObservableCollection<StockTextArchiveMediaItemViewModel>();
-            Items.CollectionChanged += (_, _) => RefreshMediaCount();
+            Materials = new ObservableCollection<StockTextArchiveMaterialGroupViewModel>();
+            Materials.CollectionChanged += (_, _) => RefreshMediaCount();
         }
 
         public StockTextArchiveDirectFilingViewModel PageOwner { get; }
@@ -1327,7 +1420,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         public IReadOnlyList<string> MapSubCategories { get; }
 
-        public ObservableCollection<StockTextArchiveMediaItemViewModel> Items { get; }
+        public ObservableCollection<StockTextArchiveMaterialGroupViewModel> Materials { get; }
 
         public string MediaKind => ArchiveRegisterDomainValues.MediaKindSimulated;
 
@@ -1337,15 +1430,96 @@ namespace DocMgr.ViewModels.YearlyArchive
             set => SetProperty(ref _mediaType, value);
         }
 
-        public int MediaCount => Items.Count;
+        public int MediaCount => Materials.Sum(material => material.Items.Count);
+
+        /// <summary>在本介质下新增一份资料名称，并带一条空子项。</summary>
+        public StockTextArchiveMaterialGroupViewModel AddMaterial(bool followsProjectNameDefault)
+        {
+            var material = new StockTextArchiveMaterialGroupViewModel(this)
+            {
+                FollowsProjectNameDefault = followsProjectNameDefault
+            };
+            if (followsProjectNameDefault)
+            {
+                material.ApplyProjectNameDefault(PageOwner.ProjectName);
+            }
+
+            material.AddItem();
+            Materials.Add(material);
+            RefreshMediaCount();
+            return material;
+        }
+
+        public void RefreshMediaCount() => OnPropertyChanged(nameof(MediaCount));
+    }
+
+    /// <summary>
+    /// 存档文本直办：一份资料名称及其子项。位于介质类型之下、资料子项之上。
+    /// </summary>
+    public sealed class StockTextArchiveMaterialGroupViewModel : ViewModelBase
+    {
+        private string _materialName = string.Empty;
+        private bool _applyingProjectDefault;
+
+        public StockTextArchiveMaterialGroupViewModel(StockTextArchiveMediaGroupViewModel owner)
+        {
+            Owner = owner ?? throw new ArgumentNullException(nameof(owner));
+            Items = new ObservableCollection<StockTextArchiveMediaItemViewModel>();
+        }
+
+        public StockTextArchiveMediaGroupViewModel Owner { get; }
+
+        public ObservableCollection<StockTextArchiveMediaItemViewModel> Items { get; }
+
+        /// <summary>为 true 时，资料名称仍等于项目名称，项目名称变更会改写它。</summary>
+        public bool FollowsProjectNameDefault { get; set; }
+
+        public string MaterialName
+        {
+            get => _materialName;
+            set
+            {
+                if (!SetProperty(ref _materialName, value))
+                {
+                    return;
+                }
+
+                if (_applyingProjectDefault)
+                {
+                    return;
+                }
+
+                string trimmed = value?.Trim() ?? string.Empty;
+                string projectName = Owner.PageOwner.ProjectName?.Trim() ?? string.Empty;
+                if (!string.Equals(trimmed, projectName, StringComparison.Ordinal))
+                {
+                    FollowsProjectNameDefault = false;
+                }
+            }
+        }
+
+        /// <summary>按当前项目名称回写，且不打断「跟随项目名称」。</summary>
+        public void ApplyProjectNameDefault(string? projectName)
+        {
+            _applyingProjectDefault = true;
+            try
+            {
+                MaterialName = projectName?.Trim() ?? string.Empty;
+            }
+            finally
+            {
+                _applyingProjectDefault = false;
+            }
+        }
 
         public void AddItem()
         {
-            string level = ConfidentialLevelOptions.Contains("秘密")
+            string level = Owner.ConfidentialLevelOptions.Contains("秘密")
                 ? "秘密"
-                : ConfidentialLevelOptions.FirstOrDefault() ?? "秘密";
-            var item = new StockTextArchiveMediaItemViewModel(this)
+                : Owner.ConfidentialLevelOptions.FirstOrDefault() ?? "秘密";
+            var item = new StockTextArchiveMediaItemViewModel(Owner)
             {
+                Material = this,
                 ConfidentialLevel = level,
                 ContentCount = 1,
                 MaterialCategory = ArchiveRegisterDomainValues.SimulatedMaterialCategoryText,
@@ -1353,10 +1527,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             };
             item.EnsureDefaultsFromPage();
             Items.Add(item);
-            RefreshMediaCount();
         }
-
-        public void RefreshMediaCount() => OnPropertyChanged(nameof(MediaCount));
     }
 
     /// <summary>
@@ -1382,6 +1553,9 @@ namespace DocMgr.ViewModels.YearlyArchive
         }
 
         public StockTextArchiveMediaGroupViewModel Owner { get; }
+
+        /// <summary>本子项所属的资料名称。</summary>
+        public StockTextArchiveMaterialGroupViewModel? Material { get; set; }
 
         public string ContentDesc
         {

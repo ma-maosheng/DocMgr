@@ -2,6 +2,7 @@
 using DocMgr.Infrastructure.Schema;
 using DocMgr.Models.SystemSettings;
 using DocMgr.Repositories.Interfaces;
+using DocMgr.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using System;
@@ -16,6 +17,7 @@ namespace DocMgr.Services.SystemSettings
     public class AdvancedDataService : IAdvancedDataService
     {
         private readonly IAdvancedDataRepository _advancedDataRepository;
+        private readonly IUserContextService _userContext;
         private static readonly HashSet<string> MaintainableEntityWhitelist = new(StringComparer.OrdinalIgnoreCase)
         {
             nameof(Department),
@@ -34,9 +36,20 @@ namespace DocMgr.Services.SystemSettings
             nameof(UserPreference)
         };
 
-        public AdvancedDataService(IAdvancedDataRepository advancedDataRepository)
+        public AdvancedDataService(
+            IAdvancedDataRepository advancedDataRepository,
+            IUserContextService userContext)
         {
             _advancedDataRepository = advancedDataRepository;
+            _userContext = userContext;
+        }
+
+        private void EnsureSystemAdministrator()
+        {
+            if (!UserRoleDomainValues.IsSystemAdministratorRole(_userContext.CurrentUser?.Role))
+            {
+                throw new InvalidOperationException("仅系统管理员可使用高级数据管理。");
+            }
         }
 
         public List<TableBrowseEntryDto> GetManageableTables()
@@ -165,6 +178,7 @@ namespace DocMgr.Services.SystemSettings
 
         public async Task<AdvancedDataTablePageDto> LoadTableDataPageAsync(string entityTypeName, int pageIndex, int pageSize)
         {
+            EnsureSystemAdministrator();
             if (pageIndex <= 0)
             {
                 throw new ArgumentOutOfRangeException(nameof(pageIndex));
@@ -207,6 +221,7 @@ namespace DocMgr.Services.SystemSettings
 
         public async Task DeleteRecordAsync(string entityTypeName, object recordId)
         {
+            EnsureSystemAdministrator();
             if (!CanMaintainTable(entityTypeName))
             {
                 throw new InvalidOperationException("当前表为只读浏览，不允许删除记录。");
@@ -227,6 +242,7 @@ namespace DocMgr.Services.SystemSettings
 
         public async Task ClearTableAsync(string entityTypeName)
         {
+            EnsureSystemAdministrator();
             if (!CanMaintainTable(entityTypeName))
             {
                 throw new InvalidOperationException("当前表为只读浏览，不允许清空。");
@@ -344,6 +360,7 @@ namespace DocMgr.Services.SystemSettings
 
         public async Task ExportTableToExcelAsync(string filePath, string entityTypeName, int? maxRowCount)
         {
+            EnsureSystemAdministrator();
             if (string.IsNullOrWhiteSpace(filePath))
             {
                 throw new ArgumentException("导出文件路径不能为空。", nameof(filePath));

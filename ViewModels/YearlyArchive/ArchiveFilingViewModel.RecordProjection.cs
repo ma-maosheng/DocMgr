@@ -1,4 +1,4 @@
-using DocMgr.Infrastructure.AgentDebugLogging;
+using DocMgr.Infrastructure;
 using DocMgr.Models.ArchiveContainers;
 using DocMgr.Models.YearlyArchive;
 using DocMgr.Repositories.Interfaces;
@@ -21,39 +21,18 @@ namespace DocMgr.ViewModels.YearlyArchive
     {
         private async Task HandleSelectedRecordsChangedAsync()
         {
-            // #region agent log
-            AgentDebugSessionLog.Write("E", "HandleSelectedRecordsChangedAsync", "enter", new
-            {
-                selectedCount = SelectedRecords.Count,
-                isSimulated = IsSimulatedTrack,
-                threadId = Environment.CurrentManagedThreadId
-            });
-            // #endregion
             await _selectedRecordsChangedGate.WaitAsync().ConfigureAwait(true);
             try
             {
                 int myGeneration = Interlocked.Increment(ref _selectedRecordsChangedGeneration);
-                // #region agent log
-                AgentDebugSessionLog.Write("E", "HandleSelectedRecordsChangedAsync", "gate acquired", new { myGeneration });
-                // #endregion
 
                 try
                 {
                     await HandleSelectedRecordsChangedCoreAsync(myGeneration).ConfigureAwait(true);
-                    // #region agent log
-                    AgentDebugSessionLog.Write("E", "HandleSelectedRecordsChangedAsync", "core completed", new
-                    {
-                        myGeneration,
-                        itemCount = SimulatedRecordItems.Count,
-                        project = TargetProject
-                    });
-                    // #endregion
                 }
                 catch (Exception ex)
                 {
-                    // #region agent log
-                    AgentDebugSessionLog.WriteException("A", "HandleSelectedRecordsChangedAsync.catch", "core threw", ex);
-                    // #endregion
+                    AppRuntimeLog.Write("加载所选资料立档信息失败。", ex);
                     string detail = ex.GetBaseException().Message;
                     await RunOnUiAsync(() =>
                         MessageBox.Show(
@@ -98,9 +77,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
             catch (Exception ex)
             {
-                // #region agent log
-                AgentDebugSessionLog.WriteException("D", "TryRefreshSelectedPendingRecordsAsync", "refresh failed", ex);
-                // #endregion
+                AppRuntimeLog.Write("刷新所选待立档登记单失败。", ex);
                 await RunOnUiAsync(() =>
                     MessageBox.Show(
                         "刷新所选待立档登记单失败: " + ex.GetBaseException().Message,
@@ -210,46 +187,13 @@ namespace DocMgr.ViewModels.YearlyArchive
 
             if (IsSimulatedTrack)
             {
-                // #region agent log
-                AgentDebugSessionLog.Write("D", "HandleSelectedRecordsChangedCoreAsync", "before LoadExistingBoxes", new
-                {
-                    TargetProject,
-                    TargetYear,
-                    mediaEntries = first.MediaEntries?.Count ?? -1
-                });
-                // #endregion
                 await LoadExistingBoxesAsync(TargetProject, DateTime.Now.Year.ToString()).ConfigureAwait(true);
                 if (myGeneration != Volatile.Read(ref _selectedRecordsChangedGeneration))
                 {
                     return;
                 }
 
-                // #region agent log
-                AgentDebugSessionLog.Write("A", "HandleSelectedRecordsChangedCoreAsync", "before RebuildSimulatedRecordItems", new
-                {
-                    selectedCount = SelectedRecords.Count,
-                    mediaEntries = SelectedRecords.Sum(r => r.MediaEntries?.Count ?? 0)
-                });
-                // #endregion
-                try
-                {
-                    RebuildSimulatedRecordItems();
-                }
-                catch (Exception ex)
-                {
-                    // #region agent log
-                    AgentDebugSessionLog.WriteException("A", "RebuildSimulatedRecordItems", "rebuild threw", ex);
-                    // #endregion
-                    throw;
-                }
-
-                // #region agent log
-                AgentDebugSessionLog.Write("B", "HandleSelectedRecordsChangedCoreAsync", "after RebuildSimulatedRecordItems", new
-                {
-                    itemCount = SimulatedRecordItems.Count,
-                    threadId = Environment.CurrentManagedThreadId
-                });
-                // #endregion
+                RebuildSimulatedRecordItems();
                 ReplaceItems(ElectronicRecordItems, Array.Empty<SelectableElectronicArchiveMediaViewModel>());
                 ReplaceItems(ElectronicRecordItemsStepTwo, Array.Empty<SelectableElectronicArchiveMediaViewModel>());
                 RefreshElectronicRecordItemsStepTwoPanel();
@@ -784,9 +728,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
             catch (Exception ex)
             {
-                // #region agent log
-                AgentDebugSessionLog.WriteException("D", "LoadExistingContainersAsync.query", errorPrefix + "query failed", ex);
-                // #endregion
+                AppRuntimeLog.Write(errorPrefix + "查询失败。", ex);
                 await RunOnUiAsync(() => MessageBox.Show(errorPrefix + ex.GetBaseException().Message)).ConfigureAwait(false);
                 return;
             }
@@ -811,9 +753,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
             catch (Exception ex)
             {
-                // #region agent log
-                AgentDebugSessionLog.WriteException("B", "LoadExistingContainersAsync.ui", errorPrefix + "ui apply failed", ex);
-                // #endregion
+                AppRuntimeLog.Write(errorPrefix + "显示失败。", ex);
                 await RunOnUiAsync(() => MessageBox.Show(errorPrefix + ex.GetBaseException().Message)).ConfigureAwait(false);
             }
         }

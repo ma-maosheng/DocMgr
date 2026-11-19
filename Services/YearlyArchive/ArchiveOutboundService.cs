@@ -342,7 +342,9 @@ namespace DocMgr.Services.YearlyArchive
             try
             {
                 record.MarkAsSubmitted();
-                record.ApprovalDeadline = DateTime.Now.AddDays(ArchiveOutboundDomainValues.DefaultApprovalDeadlineDays);
+                string overdueSettingCode = await _businessLogicSettingsService.GetApplicationOverdueSettingCodeAsync();
+                DateTime submittedAt = record.SubmittedAt ?? DateTime.Now;
+                record.ApprovalDeadline = ApplicationOverdueSettingSupport.ResolveEligibleOn(submittedAt, overdueSettingCode);
                 record.UpdatedAt = DateTime.Now;
 
                 int savedId = await _outboundRepository.SaveOrUpdateRecordGraphAsync(record);
@@ -492,12 +494,19 @@ namespace DocMgr.Services.YearlyArchive
 
         public async Task<int> ProcessOverdueAutoForceVoidAsync(DateTime asOf)
         {
+            string settingCode = await _businessLogicSettingsService.GetApplicationOverdueSettingCodeAsync();
             var records = await _outboundRepository.GetSubmittedRecordsPastDeadlineAsync(asOf);
             int count = 0;
 
             foreach (var record in records)
             {
                 if (!record.CanForceVoid)
+                {
+                    continue;
+                }
+
+                DateTime applyDate = ApplicationOverdueSettingSupport.ResolveOutboundApplyDate(record);
+                if (!ApplicationOverdueSettingSupport.IsEligibleForAdminForceVoid(applyDate, settingCode, asOf))
                 {
                     continue;
                 }

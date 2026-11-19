@@ -1,3 +1,4 @@
+using DocMgr.Models.HardDiskMedia;
 using DocMgr.Models.NetworkTransfer;
 
 namespace DocMgr.Models.SystemSettings
@@ -85,32 +86,19 @@ namespace DocMgr.Models.SystemSettings
                 enableProductionVp: false,
                 now));
 
-            // 出网：出网（院内/院外）→ 分管生产；其余 → 分管资料
+            // 出网：资料室存档 → 分管资料；其余（含院内/院外）→ 分管生产
             rules.Add(Create(
                 ApprovalWorkflowBusinessTypes.NetworkOutbound,
-                "出网（院内）",
-                priority: 10,
+                "资料室存档",
+                priority: 50,
                 enableDept: true,
                 enableArchiveRoom: true,
                 enableProduction: true,
-                enableArchiveVp: false,
-                enableProductionVp: true,
+                enableArchiveVp: true,
+                enableProductionVp: false,
                 now,
                 field1: ApprovalWorkflowDomainValues.FieldDestinationKind,
-                value1: NetworkTransferDomainValues.DestinationKindOutboundInternal));
-
-            rules.Add(Create(
-                ApprovalWorkflowBusinessTypes.NetworkOutbound,
-                "出网（院外）",
-                priority: 11,
-                enableDept: true,
-                enableArchiveRoom: true,
-                enableProduction: true,
-                enableArchiveVp: false,
-                enableProductionVp: true,
-                now,
-                field1: ApprovalWorkflowDomainValues.FieldDestinationKind,
-                value1: NetworkTransferDomainValues.DestinationKindOutboundExternal));
+                value1: NetworkTransferDomainValues.DestinationKindArchiveFiling));
 
             rules.Add(Create(
                 ApprovalWorkflowBusinessTypes.NetworkOutbound,
@@ -119,8 +107,8 @@ namespace DocMgr.Models.SystemSettings
                 enableDept: true,
                 enableArchiveRoom: true,
                 enableProduction: true,
-                enableArchiveVp: true,
-                enableProductionVp: false,
+                enableArchiveVp: false,
+                enableProductionVp: true,
                 now));
 
             // 年度离库：资料室 + 生产科 + 两位副院长
@@ -158,7 +146,21 @@ namespace DocMgr.Models.SystemSettings
                 enableProductionVp: false,
                 now));
 
-            // 硬盘出库：部门负责人 + 资料室负责人
+            // 硬盘出库：永久出库在二级审核增加生产科负责人；其余沿用默认
+            rules.Add(Create(
+                ApprovalWorkflowBusinessTypes.HardDiskOutbound,
+                "出库(永久)申请",
+                priority: 50,
+                enableDept: true,
+                enableArchiveRoom: true,
+                enableProduction: true,
+                enableArchiveVp: false,
+                enableProductionVp: false,
+                now,
+                field1: ApprovalWorkflowDomainValues.FieldApplicationType,
+                value1: HardDiskMediaApplication.TypeOutboundPermanent));
+
+            // 硬盘出库默认：部门负责人 + 资料室负责人
             rules.Add(Create(
                 ApprovalWorkflowBusinessTypes.HardDiskOutbound,
                 "默认（介质管理·硬盘·出库申请）",

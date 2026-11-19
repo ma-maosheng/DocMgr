@@ -1,4 +1,5 @@
 using DocMgr.Config;
+using DocMgr.Infrastructure;
 using DocMgr.Config.DependencyInjection;
 using DocMgr.Data;
 using DocMgr.Infrastructure.DbOperationLog;
@@ -29,27 +30,24 @@ namespace DocMgr
         {
             base.OnStartup(e);
 
-            // #region agent log
             DispatcherUnhandledException += (_, args) =>
             {
-                DocMgr.Infrastructure.AgentDebugLogging.AgentDebugSessionLog.WriteException(
-                    "E",
-                    "App.DispatcherUnhandledException",
-                    "ui unhandled — preventing silent exit",
-                    args.Exception);
+                AppRuntimeLog.Write("界面操作没有完成。", args.Exception);
                 try
                 {
                     MessageBox.Show(
-                        "未处理异常（已写入调试日志，程序暂不退出）：\n\n"
-                        + args.Exception.GetType().FullName + "\n"
-                        + args.Exception.GetBaseException().Message,
-                        "调试捕获",
+                        "这一步没有完成。\n\n"
+                        + args.Exception.GetBaseException().Message
+                        + "\n\n详细记录已写到本机日志："
+                        + Environment.NewLine
+                        + AppRuntimeLog.LogFilePath,
+                        "操作未完成",
                         MessageBoxButton.OK,
                         MessageBoxImage.Error);
                 }
                 catch
                 {
-                    // ignore
+                    // 提示本身失败时仍要拦住异常，避免程序直接退出。
                 }
 
                 args.Handled = true;
@@ -58,19 +56,14 @@ namespace DocMgr
             {
                 if (args.ExceptionObject is Exception ex)
                 {
-                    DocMgr.Infrastructure.AgentDebugLogging.AgentDebugSessionLog.WriteException(
-                        "E",
-                        "App.UnhandledException",
-                        "domain unhandled isTerminating=" + args.IsTerminating,
-                        ex);
+                    AppRuntimeLog.Write("程序发生未处理错误。", ex);
                 }
             };
-            DocMgr.Infrastructure.AgentDebugLogging.AgentDebugSessionLog.Write(
-                "E",
-                "App.OnStartup",
-                "startup begin post-fix",
-                new { logPath = DocMgr.Infrastructure.AgentDebugLogging.AgentDebugSessionLog.PrimaryLogPath, runId = "post-fix" });
-            // #endregion
+            TaskScheduler.UnobservedTaskException += (_, args) =>
+            {
+                AppRuntimeLog.Write("后台任务发生错误。", args.Exception);
+                args.SetObserved();
+            };
 
             DocMgrWindowBranding.Register();
 
@@ -87,13 +80,7 @@ namespace DocMgr
             }
             catch (Exception ex)
             {
-                // #region agent log
-                DocMgr.Infrastructure.AgentDebugLogging.AgentDebugSessionLog.WriteException(
-                    "E",
-                    "App.OnStartup",
-                    "database config failed",
-                    ex);
-                // #endregion
+                AppRuntimeLog.Write("读取数据库配置失败。", ex);
                 MessageBox.Show(
                     ex.Message,
                     "数据库配置错误",
@@ -116,38 +103,6 @@ namespace DocMgr
             ConfigureServices(services, databaseOptions);
 
             CurrentProvider = BuildServiceProvider(services);
-
-            // #region agent log
-            AppDomain.CurrentDomain.FirstChanceException += (_, args) =>
-            {
-                try
-                {
-                    Exception ex = args.Exception;
-                    string text = ex.ToString();
-                    if (text.Contains("ArchiveFiling", StringComparison.Ordinal)
-                        || text.Contains("HandleSelectedRecords", StringComparison.Ordinal)
-                        || text.Contains("CalculateBoxIndex", StringComparison.Ordinal)
-                        || text.Contains("RebuildSimulated", StringComparison.Ordinal)
-                        || text.Contains("InvalidOperationException", StringComparison.Ordinal)
-                        || text.Contains("NullReferenceException", StringComparison.Ordinal))
-                    {
-                        DocMgr.Infrastructure.AgentDebugLogging.AgentDebugSessionLog.WriteException(
-                            "E",
-                            "App.FirstChanceException",
-                            "first-chance",
-                            ex);
-                    }
-                }
-                catch
-                {
-                    // ignore
-                }
-            };
-            DocMgr.Infrastructure.AgentDebugLogging.AgentDebugSessionLog.Write(
-                "E",
-                "App.OnStartup",
-                "provider ready, showing login");
-            // #endregion
 
             var logContextService = CurrentProvider.GetRequiredService<IDbOperationLogContextService>();
             DbOperationLogUiCapture.Register(logContextService);
@@ -172,6 +127,7 @@ namespace DocMgr
                 using var scope = CurrentProvider.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
                 db.Database.Migrate();
+                EnsureFilingFactNoUniqueIndex(db);
 
                 initializationState.ReportProgress("正在检查系统基础数据…");
                 var devSeedRepository = scope.ServiceProvider.GetRequiredService<IDevSystemSettingsSeedRepository>();
@@ -186,12 +142,7 @@ namespace DocMgr
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine(ex.ToString());
-                DocMgr.Infrastructure.AgentDebugLogging.AgentDebugSessionLog.WriteException(
-                    "E",
-                    "App.InitializeDatabaseAsync",
-                    "database migrate failed",
-                    ex);
+                AppRuntimeLog.Write("数据库初始化失败。", ex);
                 initializationState.MarkFailed(
                     WrapDatabaseInitializationFailure(ex));
             }
@@ -209,12 +160,7 @@ namespace DocMgr
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine(ex.ToString());
-                DocMgr.Infrastructure.AgentDebugLogging.AgentDebugSessionLog.WriteException(
-                    "E",
-                    "App.RunDeferredDatabaseMaintenanceSafe",
-                    "deferred maintenance failed",
-                    ex);
+                AppRuntimeLog.Write("后台数据同步未完成。", ex);
 
                 string detail = ex.GetBaseException().Message;
                 if (string.IsNullOrWhiteSpace(detail))
@@ -263,7 +209,17 @@ namespace DocMgr
                 .GetResult();
             if (voidedCount > 0)
             {
-                System.Diagnostics.Debug.WriteLine($"资料借出：已自动强制作废 {voidedCount} 条逾期未审批申请。");
+                string message = $"有 {voidedCount} 条资料借出申请超过系统「申请单逾期」时限仍未审批，已自动作废，相关预订已注销。可在资料借出列表中查看。";
+                AppRuntimeLog.Write(message);
+                initializationState.ReportProgress(message);
+                Current.Dispatcher.BeginInvoke(() =>
+                {
+                    MessageBox.Show(
+                        message,
+                        "资料借出逾期作废",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                });
             }
         }
 
@@ -311,6 +267,30 @@ namespace DocMgr
         private static void ConfigureServices(IServiceCollection services, DocMgrDatabaseOptions databaseOptions)
         {
             services.AddDocMgrCore(databaseOptions);
+        }
+
+        /// <summary>
+        /// 已有库不会重跑 InitialCreate。这里补上立档事实编号的唯一索引，避免两台电脑同时立档写出相同编号。
+        /// </summary>
+        private static void EnsureFilingFactNoUniqueIndex(AppDbContext db)
+        {
+            try
+            {
+                db.Database.ExecuteSqlRaw(
+                    """
+                    IF NOT EXISTS (
+                        SELECT 1
+                        FROM sys.indexes
+                        WHERE name = N'IX_YearlyArchiveFilingFacts_FilingFactNo'
+                          AND object_id = OBJECT_ID(N'YearlyArchiveFilingFacts'))
+                    CREATE UNIQUE INDEX [IX_YearlyArchiveFilingFacts_FilingFactNo]
+                        ON [YearlyArchiveFilingFacts]([FilingFactNo]);
+                    """);
+            }
+            catch (Exception ex)
+            {
+                AppRuntimeLog.Write("立档事实编号唯一索引未能建立。若已有重复编号，需要先处理重复数据。", ex);
+            }
         }
 
         /// <summary>

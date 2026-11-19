@@ -148,20 +148,89 @@ public sealed class ArchiveFilingFactRepository : IArchiveFilingFactRepository
             .ToListAsync();
     }
 
-    public Task<List<YearlyArchiveFilingFact>> SearchLedgerAsync(FilingLedgerSearchCriteria criteria)
+    public async Task<List<YearlyArchiveFilingFact>> SearchLedgerAsync(FilingLedgerSearchCriteria criteria)
     {
         ArgumentNullException.ThrowIfNull(criteria);
 
-        IQueryable<YearlyArchiveFilingFact> query = _dbContext.YearlyArchiveFilingFacts.AsNoTracking();
-
         if (criteria.FilingFactId is int filingFactId and > 0)
         {
-            return query
+            return await _dbContext.YearlyArchiveFilingFacts
+                .AsNoTracking()
                 .Where(fact => fact.Id == filingFactId)
                 .OrderByDescending(fact => fact.FiledAt)
                 .ThenByDescending(fact => fact.Id)
                 .ToListAsync();
         }
+
+        IQueryable<YearlyArchiveFilingFact> ordered = BuildLedgerQuery(criteria)
+            .OrderByDescending(fact => fact.FiledAt)
+            .ThenByDescending(fact => fact.Id);
+        if (criteria.PageSize > 0)
+        {
+            int page = Math.Max(1, criteria.PageNumber);
+            ordered = ordered.Skip((page - 1) * criteria.PageSize).Take(criteria.PageSize);
+        }
+
+        return await ordered.ToListAsync();
+    }
+
+    public async Task<FilingLedgerMatchCounts> CountLedgerMatchesAsync(FilingLedgerSearchCriteria criteria)
+    {
+        ArgumentNullException.ThrowIfNull(criteria);
+
+        if (criteria.FilingFactId is int filingFactId and > 0)
+        {
+            var matched = await _dbContext.YearlyArchiveFilingFacts
+                .AsNoTracking()
+                .Where(fact => fact.Id == filingFactId)
+                .Select(fact => new { fact.MediaKind, fact.ArchiveCopyRole })
+                .ToListAsync();
+            return new FilingLedgerMatchCounts
+            {
+                TotalCount = matched.Count,
+                SimulatedCount = matched.Count(fact => fact.MediaKind == ArchiveRegisterDomainValues.MediaKindSimulated),
+                ElectronicCount = matched.Count(fact => fact.MediaKind == ArchiveRegisterDomainValues.MediaKindElectronic),
+                BackupCount = matched.Count(fact => fact.ArchiveCopyRole == FilingFactArchiveCopyRole.Backup)
+            };
+        }
+
+        IQueryable<YearlyArchiveFilingFact> query = BuildLedgerQuery(criteria);
+        var counts = await query
+            .GroupBy(_ => 1)
+            .Select(group => new
+            {
+                TotalCount = group.Count(),
+                SimulatedCount = group.Count(fact => fact.MediaKind == ArchiveRegisterDomainValues.MediaKindSimulated),
+                ElectronicCount = group.Count(fact => fact.MediaKind == ArchiveRegisterDomainValues.MediaKindElectronic),
+                BackupCount = group.Count(fact => fact.ArchiveCopyRole == FilingFactArchiveCopyRole.Backup)
+            })
+            .FirstOrDefaultAsync();
+
+        return counts == null
+            ? new FilingLedgerMatchCounts()
+            : new FilingLedgerMatchCounts
+            {
+                TotalCount = counts.TotalCount,
+                SimulatedCount = counts.SimulatedCount,
+                ElectronicCount = counts.ElectronicCount,
+                BackupCount = counts.BackupCount
+            };
+    }
+
+    public Task<int> CountLedgerRowsBeforeAsync(
+        FilingLedgerSearchCriteria criteria,
+        DateTime filedAt,
+        int filingFactId)
+    {
+        ArgumentNullException.ThrowIfNull(criteria);
+        return BuildLedgerQuery(criteria).CountAsync(fact =>
+            fact.FiledAt > filedAt
+            || (fact.FiledAt == filedAt && fact.Id > filingFactId));
+    }
+
+    private IQueryable<YearlyArchiveFilingFact> BuildLedgerQuery(FilingLedgerSearchCriteria criteria)
+    {
+        IQueryable<YearlyArchiveFilingFact> query = _dbContext.YearlyArchiveFilingFacts.AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(criteria.MediaKind))
         {
@@ -280,24 +349,23 @@ public sealed class ArchiveFilingFactRepository : IArchiveFilingFactRepository
             }
         }
 
-        return query
-            .OrderByDescending(fact => fact.FiledAt)
-            .ThenByDescending(fact => fact.Id)
-            .ToListAsync();
+        return query;
     }
 
     public async Task<List<int>> GetDistinctLedgerArchiveYearsAsync()
     {
-        var filingFactNos = await _dbContext.YearlyArchiveFilingFacts
-            .AsNoTracking()
-            .Where(fact => fact.FilingFactNo != string.Empty)
-            .Select(fact => fact.FilingFactNo)
+        var years = await _dbContext.Database.SqlQueryRaw<int>(
+                """
+                SELECT DISTINCT y AS [Value]
+                FROM (
+                    SELECT TRY_CAST(PARSENAME(REPLACE([FilingFactNo], N'-', N'.'), 2) AS int) AS y
+                    FROM [YearlyArchiveFilingFacts]
+                    WHERE [FilingFactNo] <> N''
+                ) AS parsed
+                WHERE y BETWEEN 1900 AND 2100
+                """)
             .ToListAsync();
-
-        var years = filingFactNos
-            .Select(FilingFactNoSupport.TryParseArchiveYear)
-            .Where(year => year.HasValue)
-            .Select(year => year!.Value)
+        years = years
             .Distinct()
             .OrderByDescending(year => year)
             .ToList();

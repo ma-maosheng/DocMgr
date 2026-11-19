@@ -108,20 +108,20 @@ public partial class HardDiskMediaReturnRegistrationPageViewModel
     /// <summary>壳：资料室签字卡。</summary>
     public bool ShowArchiveRoomHead => EnableArchiveRoomHead;
 
-    /// <summary>壳：生产科签字卡（硬盘归还不启用）。</summary>
-    public bool ShowProductionHead => false;
+    /// <summary>壳：生产科签字卡。</summary>
+    public bool ShowProductionHead => EnableProductionHead;
 
     /// <summary>壳：分管资料院长签字卡。</summary>
     public bool ShowArchiveDeputyPresident => EnableArchiveDeputyPresident;
 
-    /// <summary>壳：分管生产院长签字卡（硬盘归还不启用）。</summary>
-    public bool ShowProductionVicePresident => false;
+    /// <summary>壳：分管生产院长签字卡。</summary>
+    public bool ShowProductionVicePresident => EnableProductionVicePresident;
 
     /// <summary>壳：审核区分组标题。</summary>
-    public bool ShowReviewSignerSection => EnableDeptHead || EnableArchiveRoomHead;
+    public bool ShowReviewSignerSection => EnableDeptHead || EnableArchiveRoomHead || EnableProductionHead;
 
     /// <summary>壳：审批区分组标题。</summary>
-    public bool ShowApproveSignerSection => EnableArchiveDeputyPresident;
+    public bool ShowApproveSignerSection => EnableArchiveDeputyPresident || EnableProductionVicePresident;
 
     /// <summary>壳：可否编辑签字。</summary>
     public bool CanEditSigners => CanApprove;
@@ -132,34 +132,6 @@ public partial class HardDiskMediaReturnRegistrationPageViewModel
             _editingApplication?.FirstPrintedAt,
             _editingApplication?.PrintedTime,
             _editingApplication?.PrintCount ?? 0);
-
-    /// <summary>壳：生产科签字占位。</summary>
-    public string ProductionHead
-    {
-        get => string.Empty;
-        set { }
-    }
-
-    /// <summary>壳：生产科签字日期占位。</summary>
-    public DateTime? ProductionHeadDate
-    {
-        get => null;
-        set { }
-    }
-
-    /// <summary>壳：分管生产院长签字占位。</summary>
-    public string ProductionVicePresident
-    {
-        get => string.Empty;
-        set { }
-    }
-
-    /// <summary>壳：分管生产院长签字日期占位。</summary>
-    public DateTime? ProductionVicePresidentDate
-    {
-        get => null;
-        set { }
-    }
 
     private void NotifyShellAliasPropertiesChanged()
     {

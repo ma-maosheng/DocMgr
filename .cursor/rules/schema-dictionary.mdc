@@ -13,7 +13,7 @@ alwaysApply: true
 4. 同步命令：`dotnet run --project tools/SchemaDictionarySync`
 5. **勿直接改本 mdc 文件**；请改 `.cursor/schema/SchemaDictionary.yaml`，或在「高级数据管理」保存显示名后再重置 DB。
 
-> 生成时间（UTC）：2026-11-13T06:30:12Z
+> 生成时间（UTC）：2026-11-16T03:15:08Z
 
 ## 表索引
 
@@ -928,7 +928,6 @@ alwaysApply: true
 | 所属年度 | `Year` | `String` | 否 |
 | 申请说明 | `Reason` | `String` | 否 |
 | 其他要求 | `OtherRequests` | `String` | 否 |
-| 备注 | `Remark` | `String` | 否 |
 | 证明材料备注 | `ProofMaterialNote` | `String` | 否 |
 | 目标建档申请ID | `TargetRegisterRecordId` | `Int32?` | 否 |
 | 目标建档表单编号 | `TargetRegisterFormNo` | `String` | 否 |

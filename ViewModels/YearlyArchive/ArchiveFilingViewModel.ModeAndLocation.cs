@@ -1,4 +1,4 @@
-﻿using DocMgr.Infrastructure.AgentDebugLogging;
+﻿using DocMgr.Infrastructure;
 using DocMgr.Models.Cabinets;
 using DocMgr.Models.YearlyArchive;
 using Microsoft.Extensions.DependencyInjection;
@@ -382,17 +382,6 @@ namespace DocMgr.ViewModels.YearlyArchive
             string cabinetName = SelectedCabinet.Name;
             string side = SelectedSide;
             int myGeneration = Interlocked.Increment(ref _simulatedBoxIndexCalculationGeneration);
-            // #region agent log
-            AgentDebugSessionLog.Write("C", "CalculateBoxIndex", "start", new
-            {
-                cabinetName,
-                side,
-                row,
-                col,
-                myGeneration,
-                threadId = Environment.CurrentManagedThreadId
-            });
-            // #endregion
 
             try
             {
@@ -418,15 +407,10 @@ namespace DocMgr.ViewModels.YearlyArchive
                 PhysicalCodeResult = $"{cabinetName}{side}-{row}-{col}-{nextSequence:D2}";
                 IsPhysicalCodeWarning = false;
                 RaiseSlotSnapshotAvailabilityChanged();
-                // #region agent log
-                AgentDebugSessionLog.Write("C", "CalculateBoxIndex", "success", new { count, PhysicalCodeResult });
-                // #endregion
             }
             catch (Exception ex)
             {
-                // #region agent log
-                AgentDebugSessionLog.WriteException("C", "CalculateBoxIndex", "failed", ex);
-                // #endregion
+                AppRuntimeLog.Write("计算档案盒位置失败。", ex);
                 if (myGeneration != Volatile.Read(ref _simulatedBoxIndexCalculationGeneration))
                 {
                     return;

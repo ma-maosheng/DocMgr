@@ -58,12 +58,42 @@ namespace DocMgr.Models.YearlyArchive
 
         public StockTextArchiveDirectFilingRequest ToRequest()
         {
+            var materials = new List<(string Name, List<StockTextArchiveMediaItemDraft> Items)>();
+            foreach (StockTextArchiveMediaItemDraft item in Items)
+            {
+                string name = item.MaterialName?.Trim() ?? string.Empty;
+                int index = -1;
+                for (int i = 0; i < materials.Count; i++)
+                {
+                    if (string.Equals(materials[i].Name, name, StringComparison.Ordinal))
+                    {
+                        index = i;
+                        break;
+                    }
+                }
+
+                if (index < 0)
+                {
+                    materials.Add((name, new List<StockTextArchiveMediaItemDraft>()));
+                    index = materials.Count - 1;
+                }
+
+                materials[index].Items.Add(item);
+            }
+
+            if (materials.Count == 0)
+            {
+                materials.Add((MaterialName?.Trim() ?? string.Empty, new List<StockTextArchiveMediaItemDraft>()));
+            }
+
             return new StockTextArchiveDirectFilingRequest
             {
                 Year = Year,
                 ProjectName = ProjectName,
                 ProjectCode = ProjectCode,
-                MaterialName = MaterialName,
+                MaterialName = string.Join(
+                    "、",
+                    materials.Select(entry => entry.Name).Where(name => name.Length > 0)),
                 SourceType = SourceType,
                 ProvideUnit = ProvideUnit,
                 ArchivePurpose = ArchivePurpose,
@@ -82,7 +112,11 @@ namespace DocMgr.Models.YearlyArchive
                         MediaType = string.IsNullOrWhiteSpace(MediaType)
                             ? ArchiveRegisterDomainValues.SimulatedMediaTypePrintingPaper
                             : MediaType,
-                        Items = Items
+                        Materials = materials.Select(entry => new StockTextArchiveMaterialDraft
+                        {
+                            MaterialName = entry.Name,
+                            Items = entry.Items
+                        }).ToList()
                     }
                 }
             };

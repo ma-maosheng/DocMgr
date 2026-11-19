@@ -7,8 +7,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
-    <Version>1.1.4</Version>
-    <InformationalVersion>1.1.4</InformationalVersion>
+    <Version>1.2.0</Version>
+    <InformationalVersion>1.2.0</InformationalVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <!-- 避免全局/上级 Directory.Build.props 将警告视为错误，导致 Cursor/VS Code 的 preLaunchTask(build) 失败 -->
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
@@ -17,8 +17,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="tools/**" />
-    <None Remove="tools/**" />
+    <Compile Remove="tools/**;tests/**" />
+    <None Remove="tools/**;tests/**" />
+    <Page Remove="tests/**" />
+    <ApplicationDefinition Remove="tests/**" />
+    <EmbeddedResource Remove="tests/**" />
   </ItemGroup>
 
   <ItemGroup>

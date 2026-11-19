@@ -21,6 +21,15 @@ namespace DocMgr.Repositories.Interfaces
 
         Task<List<YearlyArchiveFilingFact>> SearchLedgerAsync(FilingLedgerSearchCriteria criteria);
 
+        /// <summary>立档台账命中条数。分页时仍统计全部命中，不限于当前页。</summary>
+        Task<FilingLedgerMatchCounts> CountLedgerMatchesAsync(FilingLedgerSearchCriteria criteria);
+
+        /// <summary>当前排序下，排在指定立档事实之前的命中条数，用于算出它所在的页。</summary>
+        Task<int> CountLedgerRowsBeforeAsync(
+            FilingLedgerSearchCriteria criteria,
+            DateTime filedAt,
+            int filingFactId);
+
         Task<List<int>> GetDistinctLedgerArchiveYearsAsync();
 
         Task<List<FilingLedgerProjectFilterItem>> GetLedgerProjectsByArchiveYearAsync(string? archiveYear);

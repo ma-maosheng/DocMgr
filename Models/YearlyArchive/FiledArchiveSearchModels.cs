@@ -326,6 +326,42 @@ namespace DocMgr.Models.YearlyArchive
 
         /// <summary>指定立档事实 Id 时精确跳转定位（忽略其他筛选）。</summary>
         public int? FilingFactId { get; set; }
+
+        /// <summary>从 1 开始。与 <see cref="PageSize"/> 同时有效时只返回该页。</summary>
+        public int PageNumber { get; set; } = 1;
+
+        /// <summary>小于等于 0 表示返回全部匹配记录（导出、定位）。</summary>
+        public int PageSize { get; set; }
+    }
+
+    /// <summary>
+    /// 立档台账一次查询的命中规模，不含行内容。
+    /// </summary>
+    public sealed class FilingLedgerMatchCounts
+    {
+        public int TotalCount { get; init; }
+
+        public int SimulatedCount { get; init; }
+
+        public int ElectronicCount { get; init; }
+
+        public int BackupCount { get; init; }
+    }
+
+    /// <summary>
+    /// 立档台账一页结果。总数是全部命中，行只含当前页。
+    /// </summary>
+    public sealed class FilingLedgerSearchPage
+    {
+        public IReadOnlyList<FilingLedgerRow> Rows { get; init; } = Array.Empty<FilingLedgerRow>();
+
+        public int TotalCount { get; init; }
+
+        public int SimulatedCount { get; init; }
+
+        public int ElectronicCount { get; init; }
+
+        public int BackupCount { get; init; }
     }
 
     /// <summary>

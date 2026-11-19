@@ -83,7 +83,7 @@ public static class SystemIdentitySeedCatalog
         new("wjf", "吴建菲", UserRoleDomainValues.ProductionManagementDepartment, UserRoleDomainValues.ProductionHead, "wjf"),
         new("gpf", "郭鹏飞", UserRoleDomainValues.ArchiveRoomDepartment, UserRoleDomainValues.ArchiveRoomHead, "gpf"),
         new("wxl", "吴秀丽", UserRoleDomainValues.ArchiveRoomDepartment, UserRoleDomainValues.ArchiveAdmin, "wxl"),
-        new("jn", "及那", UserRoleDomainValues.ArchiveRoomDepartment, UserRoleDomainValues.ArchiveAdmin, "jn"),
+        new("jn", "及娜", UserRoleDomainValues.ArchiveRoomDepartment, UserRoleDomainValues.ArchiveAdmin, "jn"),
         new("gpf_kf", "郭鹏飞", "科研开发室", UserRoleDomainValues.DepartmentHead, "gpf_kf"),
         new("wxl_kf", "吴秀丽", "科研开发室", UserRoleDomainValues.DepartmentArchiveClerk, "wxl_kf")
     ];

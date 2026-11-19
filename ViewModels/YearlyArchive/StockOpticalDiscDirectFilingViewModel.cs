@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
@@ -49,6 +50,8 @@ namespace DocMgr.ViewModels.YearlyArchive
         private string _provideUnit = ArchiveRegisterDomainValues.ProvideUnitArchiveRoom;
         private string _assignMode = AssignModeWholeDisc;
         private bool _canAssignByFolder;
+        private bool _canAssignByProject;
+        private bool _canAssignByYear;
         private bool _canAssignByExtension;
         private bool _ignoredContentAcknowledged;
         private HardDiskMediaReturnTargetLocationOption? _selectedSlotOption;
@@ -107,16 +110,22 @@ namespace DocMgr.ViewModels.YearlyArchive
         public ObservableCollection<HardDiskMediaReturnTargetLocationOption> SlotOptions { get; } = new();
         public ObservableCollection<StockOpticalDiscPreviewRow> PreviewRows { get; } = new();
 
-        /// <summary>按后缀指派时的过滤与组织行。子项名是后缀，资料名称用于把多个后缀归成一份资料。</summary>
+        /// <summary>按文件后缀指派资料子项时的过滤与组织行。子项名是后缀，资料名称用于把多个后缀归成一份资料。</summary>
         public ObservableCollection<StockOpticalDiscPreviewRow> ExtensionRows { get; } = new();
 
         /// <summary>把资料所属目录整体登记为一个子项。</summary>
         public const string AssignModeWholeDisc = "WholeDisc";
 
-        /// <summary>按一级文件夹指派子项。</summary>
+        /// <summary>所属目录一类资料：所选目录是资料名称，一级子目录是资料子项。</summary>
         public const string AssignModeFolder = "Folder";
 
-        /// <summary>按资料所属目录下一层文件的后缀指派子项。</summary>
+        /// <summary>所属目录一个项目：一级子目录是资料名称，二级子目录是资料子项。</summary>
+        public const string AssignModeProject = "Project";
+
+        /// <summary>所属目录一个年度：一级子目录是项目，二级是资料名称，三级是资料子项。</summary>
+        public const string AssignModeYear = "Year";
+
+        /// <summary>按文件后缀指派资料子项。</summary>
         public const string AssignModeExtension = "Extension";
 
         public ICommand PickRootCommand { get; }
@@ -248,7 +257,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
         }
 
-        /// <summary>指派方式：所属目录一个子项、按文件夹指派、按后缀指派。</summary>
+        /// <summary>指派方式：所属目录一个子项、一类资料、一个项目、一个年度、按文件后缀指派资料子项。</summary>
         public string AssignMode
         {
             get => _assignMode;
@@ -260,11 +269,19 @@ namespace DocMgr.ViewModels.YearlyArchive
                     return;
                 }
 
+                IgnoredContentAcknowledged = false;
+                ApplyDirectoryIdentityForMode(normalized);
                 OnPropertyChanged(nameof(IsExtensionAssignMode));
+                OnPropertyChanged(nameof(IsProjectAssignMode));
+                OnPropertyChanged(nameof(IsYearAssignMode));
+                OnPropertyChanged(nameof(IsProjectFormEnabled));
                 OnPropertyChanged(nameof(IgnoreConfirmText));
+                OnPropertyChanged(nameof(PreviewSummary));
                 if (!_suppressModeRebuild)
                 {
                     RebuildPreviewFromScan();
+                    RefreshProjectHint();
+                    _pageDb.RunInBackground(RefreshExistingBagHintAsync);
                 }
                 else
                 {
@@ -273,18 +290,43 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
         }
 
-        /// <summary>当前是否按后缀指派。</summary>
+        /// <summary>当前是否按文件后缀指派资料子项。</summary>
         public bool IsExtensionAssignMode =>
             string.Equals(AssignMode, AssignModeExtension, StringComparison.Ordinal);
 
-        /// <summary>扫描结果含一级业务文件夹时，才可按文件夹指派。</summary>
+        /// <summary>当前是否所属目录一个项目。</summary>
+        public bool IsProjectAssignMode =>
+            string.Equals(AssignMode, AssignModeProject, StringComparison.Ordinal);
+
+        /// <summary>当前是否所属目录一个年度。</summary>
+        public bool IsYearAssignMode =>
+            string.Equals(AssignMode, AssignModeYear, StringComparison.Ordinal);
+
+        /// <summary>年度指派时项目来自子目录，页面上的项目框不再填写。</summary>
+        public bool IsProjectFormEnabled => !IsYearAssignMode;
+
+        /// <summary>扫描结果含一级业务文件夹时，才可按所属目录一类资料指派。</summary>
         public bool CanAssignByFolder
         {
             get => _canAssignByFolder;
             private set => SetProperty(ref _canAssignByFolder, value);
         }
 
-        /// <summary>资料所属目录下一层存在带后缀的文件时，才可按后缀指派。</summary>
+        /// <summary>存在资料子项级子目录时，才可按所属目录一个项目指派。</summary>
+        public bool CanAssignByProject
+        {
+            get => _canAssignByProject;
+            private set => SetProperty(ref _canAssignByProject, value);
+        }
+
+        /// <summary>存在项目、资料名称、资料子项三级子目录时，才可按所属目录一个年度指派。</summary>
+        public bool CanAssignByYear
+        {
+            get => _canAssignByYear;
+            private set => SetProperty(ref _canAssignByYear, value);
+        }
+
+        /// <summary>资料所属目录及其子目录存在带后缀的文件时，才可按文件后缀指派资料子项。</summary>
         public bool CanAssignByExtension
         {
             get => _canAssignByExtension;
@@ -306,6 +348,16 @@ namespace DocMgr.ViewModels.YearlyArchive
                     return PreviewRows.Any(row => !row.Include) || _scan.LooseFileCount > 0;
                 }
 
+                if (IsProjectAssignMode)
+                {
+                    return PreviewRows.Any(row => !row.Include) || _scan.ProjectLooseFileCount > 0;
+                }
+
+                if (IsYearAssignMode)
+                {
+                    return PreviewRows.Any(row => !row.Include) || _scan.YearLooseFileCount > 0;
+                }
+
                 if (IsExtensionAssignMode)
                 {
                     return ExtensionRows.Any(row => !row.Include)
@@ -319,7 +371,11 @@ namespace DocMgr.ViewModels.YearlyArchive
         /// <summary>忽略确认勾选的文案，随指派方式变化。</summary>
         public string IgnoreConfirmText => IsExtensionAssignMode
             ? "已确认忽略未纳入的后缀和无后缀文件"
-            : "已确认忽略未纳入的文件夹和资料所属目录散文件";
+            : IsYearAssignMode
+                ? "已确认忽略未纳入的子项，以及年度、项目、资料目录中的散文件"
+                : IsProjectAssignMode
+                    ? "已确认忽略未纳入的子项，以及项目目录和资料目录中的散文件"
+                    : "已确认忽略未纳入的文件夹和资料所属目录散文件";
 
         public bool IgnoredContentAcknowledged
         {
@@ -411,7 +467,17 @@ namespace DocMgr.ViewModels.YearlyArchive
             get
             {
                 var included = PreviewRows.Where(row => row.Include).ToList();
-                int materials = included.Select(row => row.MaterialName).Distinct(StringComparer.Ordinal).Count();
+                int materials = CountRegisterMaterials(included);
+                if (IsYearAssignMode)
+                {
+                    int projects = included
+                        .Select(row => row.ProjectName.Trim())
+                        .Where(name => !string.IsNullOrWhiteSpace(name))
+                        .Distinct(StringComparer.Ordinal)
+                        .Count();
+                    return $"本次纳入 {projects} 个项目、{materials} 份资料、{included.Count} 个子项。编目路径按年度/项目/资料/子项生成，不改写光盘目录。";
+                }
+
                 return $"本次纳入 {materials} 份资料、{included.Count} 个子项。编目路径按年度/项目/资料/子项生成，不改写光盘目录。";
             }
         }
@@ -485,6 +551,10 @@ namespace DocMgr.ViewModels.YearlyArchive
             OnPropertyChanged(nameof(HasUnassignedContent));
             CommandManager.InvalidateRequerySuggested();
             _pageDb.RunInBackground(RefreshBusinessNumberHintAsync);
+            if (IsYearAssignMode)
+            {
+                _pageDb.RunInBackground(RefreshExistingBagHintAsync);
+            }
         }
 
         /// <summary>扫描预览批量赋值的来源。</summary>
@@ -764,6 +834,8 @@ namespace DocMgr.ViewModels.YearlyArchive
                 ExtensionRows.Clear();
                 ScanWarningText = string.Empty;
                 CanAssignByFolder = false;
+                CanAssignByProject = false;
+                CanAssignByYear = false;
                 CanAssignByExtension = false;
                 _dialogService.ShowMessage(result.ErrorMessage, "目录扫描");
                     NotifyPreviewChanged();
@@ -777,6 +849,8 @@ namespace DocMgr.ViewModels.YearlyArchive
                 try
                 {
                     CanAssignByFolder = result.Folders.Count > 0;
+                    CanAssignByProject = result.ProjectItems.Count > 0;
+                    CanAssignByYear = result.YearItems.Count > 0;
                     CanAssignByExtension = result.Extensions.Count > 0;
                     AssignMode = result.Folders.Count == 0 ? AssignModeWholeDisc : AssignModeFolder;
                 }
@@ -802,6 +876,8 @@ namespace DocMgr.ViewModels.YearlyArchive
                 ExtensionRows.Clear();
                 ScanWarningText = string.Empty;
                 CanAssignByFolder = false;
+                CanAssignByProject = false;
+                CanAssignByYear = false;
                 CanAssignByExtension = false;
                 NotifyPreviewChanged();
                 _dialogService.ShowError("扫描光盘失败：" + ex.Message);
@@ -828,6 +904,20 @@ namespace DocMgr.ViewModels.YearlyArchive
                 foreach (var row in ExtensionRows)
                 {
                     PreviewRows.Add(row);
+                }
+            }
+            else if (IsYearAssignMode && _scan.YearItems.Count > 0)
+            {
+                foreach (var item in _scan.YearItems)
+                {
+                    PreviewRows.Add(new StockOpticalDiscPreviewRow(this, item));
+                }
+            }
+            else if (IsProjectAssignMode && _scan.ProjectItems.Count > 0)
+            {
+                foreach (var item in _scan.ProjectItems)
+                {
+                    PreviewRows.Add(new StockOpticalDiscPreviewRow(this, item));
                 }
             }
             else if (string.Equals(AssignMode, AssignModeFolder, StringComparison.Ordinal) && _scan.Folders.Count > 0)
@@ -869,6 +959,16 @@ namespace DocMgr.ViewModels.YearlyArchive
                 ApplyCatalogPath(folder);
             }
 
+            foreach (var item in _scan.ProjectItems)
+            {
+                ApplyCatalogPath(item);
+            }
+
+            foreach (var item in _scan.YearItems)
+            {
+                ApplyCatalogPath(item);
+            }
+
             foreach (var extension in _scan.Extensions)
             {
                 ApplyCatalogPath(extension);
@@ -887,9 +987,12 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
+            string projectName = string.IsNullOrWhiteSpace(draft.CatalogProjectName)
+                ? ProjectName
+                : draft.CatalogProjectName;
             draft.FilingStoragePath = StockOpticalDiscDirectFilingDirectorySupport.BuildCatalogPath(
                 Year,
-                ProjectName,
+                projectName,
                 draft.MaterialName,
                 draft.ItemName);
         }
@@ -941,6 +1044,12 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private void ViewYearProjects()
         {
+            if (IsYearAssignMode)
+            {
+                _dialogService.ShowMessage("所属目录一个年度时，项目来自子目录，请在扫描预览中修改。", "年度已有项目");
+                return;
+            }
+
             if (string.IsNullOrWhiteSpace(Year))
             {
                 _dialogService.ShowMessage("请先填写年度，再查看该年已有项目。", "年度已有项目");
@@ -962,11 +1071,61 @@ namespace DocMgr.ViewModels.YearlyArchive
             _pageDb.RunInBackground(RefreshExistingBagHintAsync);
         }
 
+        private void ApplyDirectoryIdentityForMode(string mode)
+        {
+            if (_scan == null)
+            {
+                return;
+            }
+
+            if (string.Equals(mode, AssignModeProject, StringComparison.Ordinal))
+            {
+                string name = _scan.DefaultMaterialName?.Trim() ?? string.Empty;
+                if (!string.IsNullOrWhiteSpace(name)
+                    && !string.Equals(ProjectName, name, StringComparison.Ordinal))
+                {
+                    ProjectName = name;
+                }
+
+                return;
+            }
+
+            if (!string.Equals(mode, AssignModeYear, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            string path = _scan.RootPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            string folderYear = Path.GetFileName(path)?.Trim() ?? string.Empty;
+            if (folderYear.Length == 4
+                && folderYear.All(char.IsDigit)
+                && !string.Equals(Year, folderYear, StringComparison.Ordinal))
+            {
+                Year = folderYear;
+            }
+        }
+
+        private static int CountRegisterMaterials(IEnumerable<StockOpticalDiscPreviewRow> included)
+        {
+            return included
+                .Select(row => row.Item.CatalogProjectName.Trim() + "\u001f" + row.MaterialName.Trim())
+                .Distinct(StringComparer.Ordinal)
+                .Count();
+        }
+
         private void RefreshProjectHint()
         {
+            if (IsYearAssignMode)
+            {
+                ProjectHint = "项目名称取自所属目录的下一级文件夹，可在扫描预览中修改。这些项目写入同一张光盘。";
+                return;
+            }
+
             if (string.IsNullOrWhiteSpace(Year) || string.IsNullOrWhiteSpace(ProjectName))
             {
-                ProjectHint = "请填写年度和项目。光盘目录不要求包含年度、项目文件夹。";
+                ProjectHint = IsProjectAssignMode
+                    ? "年度仍在上方填写。项目名称默认取自所属目录，可改成编目用的项目名。"
+                    : "请填写年度和项目。光盘目录不要求包含年度、项目文件夹。";
                 return;
             }
 
@@ -992,6 +1151,38 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private async Task RefreshExistingBagHintAsync()
         {
+            if (IsYearAssignMode)
+            {
+                if (string.IsNullOrWhiteSpace(Year))
+                {
+                    ExistingBagHint = "填写四位年度后，这里显示各项目已有的电子光盘袋。";
+                    return;
+                }
+
+                var names = PreviewRows
+                    .Where(row => row.Include)
+                    .Select(row => row.ProjectName.Trim())
+                    .Where(name => !string.IsNullOrWhiteSpace(name))
+                    .Distinct(StringComparer.Ordinal)
+                    .OrderBy(name => name, StringComparer.Ordinal)
+                    .ToList();
+                if (names.Count == 0)
+                {
+                    ExistingBagHint = "纳入子项后，这里显示各项目已有的电子光盘袋。";
+                    return;
+                }
+
+                var parts = new List<string>(names.Count);
+                foreach (string name in names)
+                {
+                    int bagCount = await _filingService.CountExistingOpticalDiscBagsAsync(name, Year);
+                    parts.Add(bagCount <= 0 ? $"{name}尚无光盘袋" : $"{name}已有 {bagCount} 袋");
+                }
+
+                ExistingBagHint = "各项目写入同一张光盘。" + string.Join("；", parts) + "。";
+                return;
+            }
+
             if (string.IsNullOrWhiteSpace(Year) || string.IsNullOrWhiteSpace(ProjectName))
             {
                 ExistingBagHint = string.Empty;
@@ -1037,10 +1228,7 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private async Task RefreshBusinessNumberHintAsync()
         {
-            int materialCount = PreviewRows.Where(row => row.Include)
-                .Select(row => row.MaterialName)
-                .Distinct(StringComparer.Ordinal)
-                .Count();
+            int materialCount = CountRegisterMaterials(PreviewRows.Where(row => row.Include));
             if (materialCount <= 0 || string.IsNullOrWhiteSpace(Year))
             {
                 BusinessNumberHint = "确认立档后：每份资料生成一条建档单号，整张光盘生成一个电子袋号。光盘编号与介质袋编号相同。";
@@ -1126,9 +1314,17 @@ namespace DocMgr.ViewModels.YearlyArchive
                 return;
             }
 
+            string projectText = IsYearAssignMode
+                ? string.Join(
+                    "、",
+                    PreviewRows.Where(row => row.Include)
+                        .Select(row => row.ProjectName.Trim())
+                        .Where(name => !string.IsNullOrWhiteSpace(name))
+                        .Distinct(StringComparer.Ordinal))
+                : ProjectName;
             string confirmText =
                 $"即将把这张光盘登记为数据光盘，并按指派结果直接立档。光盘编号与介质袋编号相同，系统不改写光盘目录。\n"
-                + $"年度/项目：{Year} / {ProjectName}\n"
+                + $"年度/项目：{Year} / {projectText}\n"
                 + $"来源：{SourceType}　提供单位：{ProvideUnit}\n"
                 + $"介质袋编号：{PreviewElectronicArchiveNo}\n"
                 + $"物理位置编号：{StorageLocation}\n"
@@ -1200,6 +1396,8 @@ namespace DocMgr.ViewModels.YearlyArchive
             PreviewRows.Clear();
             ExtensionRows.Clear();
             CanAssignByFolder = false;
+            CanAssignByProject = false;
+            CanAssignByYear = false;
             CanAssignByExtension = false;
             _suppressModeRebuild = true;
             try
@@ -1246,11 +1444,15 @@ namespace DocMgr.ViewModels.YearlyArchive
         private StockOpticalDiscDirectFilingRequest BuildRequest()
         {
             var included = PreviewRows.Where(row => row.Include).ToList();
+            bool yearMode = IsYearAssignMode;
             var materials = included
-                .GroupBy(row => row.MaterialName.Trim(), StringComparer.Ordinal)
+                .GroupBy(row => (
+                    Project: yearMode ? row.ProjectName.Trim() : string.Empty,
+                    Material: row.MaterialName.Trim()))
                 .Select(group => new StockOpticalDiscMaterialDraft
                 {
-                    MaterialName = group.Key,
+                    MaterialName = group.Key.Material,
+                    ProjectName = group.Key.Project,
                     Items = group.Select(row => row.Item).ToList()
                 })
                 .ToList();
@@ -1266,12 +1468,20 @@ namespace DocMgr.ViewModels.YearlyArchive
                 ArchivePurpose = ArchivePurpose?.Trim() ?? string.Empty,
                 ProvideUnit = ProvideUnit?.Trim() ?? string.Empty,
                 AssignByFolder = string.Equals(AssignMode, AssignModeFolder, StringComparison.Ordinal),
+                AssignByProject = IsProjectAssignMode,
+                AssignByYear = yearMode,
                 AssignByExtension = IsExtensionAssignMode,
                 IgnoredContentAcknowledged = IgnoredContentAcknowledged,
                 LooseFileCount = string.Equals(AssignMode, AssignModeFolder, StringComparison.Ordinal)
                     ? _scan?.LooseFileCount ?? 0
-                    : 0,
+                    : IsProjectAssignMode
+                        ? _scan?.ProjectLooseFileCount ?? 0
+                        : yearMode
+                            ? _scan?.YearLooseFileCount ?? 0
+                            : 0,
                 ExcludedFolderCount = string.Equals(AssignMode, AssignModeFolder, StringComparison.Ordinal)
+                    || IsProjectAssignMode
+                    || yearMode
                     ? PreviewRows.Count(row => !row.Include)
                     : 0,
                 ExcludedExtensionCount = IsExtensionAssignMode
@@ -1496,6 +1706,30 @@ namespace DocMgr.ViewModels.YearlyArchive
             }
         }
 
+        /// <summary>所属目录一个年度时，子项所属项目。其余指派方式沿用页面上的项目。</summary>
+        public string ProjectName
+        {
+            get => string.IsNullOrWhiteSpace(Item.CatalogProjectName) ? _owner.ProjectName : Item.CatalogProjectName;
+            set
+            {
+                if (!_owner.IsYearAssignMode)
+                {
+                    return;
+                }
+
+                string trimmed = value?.Trim() ?? string.Empty;
+                if (string.Equals(Item.CatalogProjectName, trimmed, StringComparison.Ordinal))
+                {
+                    return;
+                }
+
+                Item.CatalogProjectName = trimmed;
+                RefreshCatalogPath();
+                OnPropertyChanged();
+                _owner.NotifyPreviewChanged();
+            }
+        }
+
         public string PhysicalPath => Item.StoragePath;
 
         public string OrganizationForm => Item.DataOrganizationForm;
@@ -1667,9 +1901,12 @@ namespace DocMgr.ViewModels.YearlyArchive
 
         private void RefreshCatalogPath()
         {
+            string projectName = string.IsNullOrWhiteSpace(Item.CatalogProjectName)
+                ? _owner.ProjectName
+                : Item.CatalogProjectName;
             Item.FilingStoragePath = StockOpticalDiscDirectFilingDirectorySupport.BuildCatalogPath(
                 _owner.Year,
-                _owner.ProjectName,
+                projectName,
                 Item.MaterialName,
                 Item.ItemName);
             OnPropertyChanged(nameof(FilingStoragePath));

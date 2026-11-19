@@ -14,6 +14,9 @@ namespace DocMgr.Models.YearlyArchive
 
         public string ProjectCode { get; init; } = string.Empty;
 
+        /// <summary>
+        /// 各资料名称顿号摘要。立档按介质内每一份资料名称分别写入，本字段只供确认提示与兼容旧调用。
+        /// </summary>
         public string MaterialName { get; init; } = string.Empty;
 
         public string SourceType { get; init; } = ArchiveRegisterDomainValues.SourceTypeInternal;
@@ -49,11 +52,45 @@ namespace DocMgr.Models.YearlyArchive
     }
 
     /// <summary>
-    /// 存档文本直办：一组模拟介质（类型 + 子项）。
+    /// 存档文本直办：一组模拟介质（类型 + 多份资料名称）。
     /// </summary>
     public sealed class StockTextArchiveMediaGroupDraft
     {
         public string MediaType { get; init; } = ArchiveRegisterDomainValues.SimulatedMediaTypePrintingPaper;
+
+        /// <summary>本介质下的资料名称。每份资料各自带资料子项。</summary>
+        public IReadOnlyList<StockTextArchiveMaterialDraft> Materials { get; init; }
+            = Array.Empty<StockTextArchiveMaterialDraft>();
+
+        /// <summary>未分组的旧调用。有 <see cref="Materials"/> 时忽略。</summary>
+        public IReadOnlyList<StockTextArchiveMediaItemDraft> Items { get; init; }
+            = Array.Empty<StockTextArchiveMediaItemDraft>();
+
+        /// <summary>解析本介质的资料名称。未分组时用回退名称包住全部子项。</summary>
+        public IReadOnlyList<StockTextArchiveMaterialDraft> ResolveMaterials(string? fallbackMaterialName)
+        {
+            if (Materials is { Count: > 0 })
+            {
+                return Materials;
+            }
+
+            return new[]
+            {
+                new StockTextArchiveMaterialDraft
+                {
+                    MaterialName = fallbackMaterialName?.Trim() ?? string.Empty,
+                    Items = Items ?? Array.Empty<StockTextArchiveMediaItemDraft>()
+                }
+            };
+        }
+    }
+
+    /// <summary>
+    /// 存档文本直办：一份资料名称及其子项。
+    /// </summary>
+    public sealed class StockTextArchiveMaterialDraft
+    {
+        public string MaterialName { get; init; } = string.Empty;
 
         public IReadOnlyList<StockTextArchiveMediaItemDraft> Items { get; init; }
             = Array.Empty<StockTextArchiveMediaItemDraft>();
@@ -77,6 +114,9 @@ namespace DocMgr.Models.YearlyArchive
         public string SubCategory { get; init; } = ArchiveRegisterDomainValues.SimulatedSubCategoryOther;
 
         public string OrganizationForm { get; init; } = ArchiveRegisterDomainValues.SimulatedOrganizationFormBound;
+
+        /// <summary>所属资料名称。交互式录入写在资料组上；Excel 每一行自带，便于同一盒拆成多份资料。</summary>
+        public string MaterialName { get; init; } = string.Empty;
 
         /// <summary>
         /// 资料来源（默认内部），允许按子项分别指定；空白时回落请求级来源。

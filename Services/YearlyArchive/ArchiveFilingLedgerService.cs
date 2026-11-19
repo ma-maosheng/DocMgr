@@ -32,6 +32,29 @@ namespace DocMgr.Services.YearlyArchive
             return await _filingFactRepository.GetLedgerProjectsByArchiveYearAsync(archiveYear);
         }
 
+        public async Task<FilingLedgerSearchPage> SearchPageAsync(FilingLedgerSearchCriteria criteria)
+        {
+            ArgumentNullException.ThrowIfNull(criteria);
+            FilingLedgerMatchCounts counts = await _filingFactRepository.CountLedgerMatchesAsync(criteria);
+            IReadOnlyList<FilingLedgerRow> rows = await SearchAsync(criteria);
+            return new FilingLedgerSearchPage
+            {
+                Rows = rows,
+                TotalCount = counts.TotalCount,
+                SimulatedCount = counts.SimulatedCount,
+                ElectronicCount = counts.ElectronicCount,
+                BackupCount = counts.BackupCount
+            };
+        }
+
+        public Task<int> CountRowsBeforeAsync(
+            FilingLedgerSearchCriteria criteria,
+            DateTime filedAt,
+            int filingFactId)
+        {
+            return _filingFactRepository.CountLedgerRowsBeforeAsync(criteria, filedAt, filingFactId);
+        }
+
         public async Task<IReadOnlyList<FilingLedgerRow>> SearchAsync(FilingLedgerSearchCriteria criteria)
         {
             ArgumentNullException.ThrowIfNull(criteria);

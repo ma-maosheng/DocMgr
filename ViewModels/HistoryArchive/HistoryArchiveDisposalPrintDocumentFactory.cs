@@ -21,7 +21,6 @@ namespace DocMgr.ViewModels.HistoryArchive
         private const double TitleChromeHeight = 90;
         private const double HeaderHeight = 28;
         private const double StandardRowHeight = PrintPageLayoutSupport.TableRowContentHeightOneLineDip;
-        private const double ReviewRowHeight = PrintPageLayoutSupport.TableRowContentHeightOneLineDip;
         private const double RowChromeDip = PrintPageLayoutSupport.TableCellPaddingDip;
         private const string BlankDateSuffix = "日期:______年___月___日";
 
@@ -57,14 +56,20 @@ namespace DocMgr.ViewModels.HistoryArchive
                 : 0;
             double reasonRowHeight = PrintPageLayoutSupport.ResolveSpannedContentRowHeightDip(reasonText, ReasonMaxLines);
             double remarkRowHeight = PrintPageLayoutSupport.ResolveSpannedContentRowHeightDip(remarkText, RemarkMaxLines);
+            double reviewRowHeight = hasReview
+                ? PrintPageLayoutSupport.GetTableRowContentHeightDip(CountEnabledReviewLines(data))
+                : 0;
+            double approveRowHeight = hasApprove
+                ? PrintPageLayoutSupport.GetTableRowContentHeightDip(CountEnabledApproveLines(data))
+                : 0;
             double itemRowHeight = CalculateItemRowHeight(
                 data,
                 otherOrTransferRowHeight,
                 reasonRowHeight,
                 remarkRowHeight,
                 hasTransferTarget || hasOtherRemark,
-                hasReview,
-                hasApprove,
+                reviewRowHeight,
+                approveRowHeight,
                 itemListText);
 
             var document = CreateDocumentSkeleton();
@@ -112,12 +117,12 @@ namespace DocMgr.ViewModels.HistoryArchive
                 StandardRowHeight));
             if (hasReview)
             {
-                rowGroup.Rows.Add(CreateSingleRow("审核", reviewSection, ReviewRowHeight, verticalAlignTop: true));
+                rowGroup.Rows.Add(CreateSingleRow("审核", reviewSection, reviewRowHeight, verticalAlignTop: true));
             }
 
             if (hasApprove)
             {
-                rowGroup.Rows.Add(CreateSingleRow("审批", approveSection, ReviewRowHeight, verticalAlignTop: true));
+                rowGroup.Rows.Add(CreateSingleRow("审批", approveSection, approveRowHeight, verticalAlignTop: true));
             }
 
             rowGroup.Rows.Add(CreateSingleRow("备注", remarkText, remarkRowHeight));
@@ -128,24 +133,63 @@ namespace DocMgr.ViewModels.HistoryArchive
             return document;
         }
 
+        private static int CountEnabledReviewLines(HistoryArchiveDisposalPrintData data)
+        {
+            int count = 0;
+            if (data.EnableDeptHead)
+            {
+                count++;
+            }
+
+            if (data.EnableArchiveRoomHead)
+            {
+                count++;
+            }
+
+            if (data.EnableProductionHead)
+            {
+                count++;
+            }
+
+            return Math.Max(count, 1);
+        }
+
+        private static int CountEnabledApproveLines(HistoryArchiveDisposalPrintData data)
+        {
+            int count = 0;
+            if (data.EnableArchiveDeputyPresident)
+            {
+                count++;
+            }
+
+            if (data.EnableProductionVicePresident)
+            {
+                count++;
+            }
+
+            return Math.Max(count, 1);
+        }
+
         private static double CalculateItemRowHeight(
             HistoryArchiveDisposalPrintData data,
             double otherOrTransferRowHeight,
             double reasonRowHeight,
             double remarkRowHeight,
             bool hasOptionalField,
-            bool hasReview,
-            bool hasApprove,
+            double reviewRowHeight,
+            double approveRowHeight,
             string itemListText)
         {
             int oneLineRows = 2; // 类别/方式、申请人
+            bool hasReview = reviewRowHeight > 0;
+            bool hasApprove = approveRowHeight > 0;
             double fixedContentHeight =
                 StandardRowHeight * oneLineRows
                 + (hasOptionalField ? otherOrTransferRowHeight : 0)
                 + reasonRowHeight
                 + remarkRowHeight
-                + (hasReview ? ReviewRowHeight : 0)
-                + (hasApprove ? ReviewRowHeight : 0);
+                + reviewRowHeight
+                + approveRowHeight;
             int fixedRowCount = oneLineRows
                 + (hasOptionalField ? 1 : 0)
                 + 2 // 申请说明、备注
@@ -277,7 +321,7 @@ namespace DocMgr.ViewModels.HistoryArchive
         private static IReadOnlyList<string> BuildFooterLines(HistoryArchiveDisposalPrintData data) =>
         [
             "1、本单由资料管理员发起，按“保存草稿、提交、打印签批单、线下签字、审批通过、上传签批单、办结”流程办理。",
-            "2、审核为资料室负责人、审批为分管资料院长签字，仅需签字与日期；请线下完成后回传签批单。",
+            "2、请按本单列出的审核审批节点签字，仅需签字与日期；请线下完成后回传签批单。",
             $"3、本签批单已累计打印 {data.PrintCount + 1} 次，最新打印请与系统记录核对。"
         ];
 

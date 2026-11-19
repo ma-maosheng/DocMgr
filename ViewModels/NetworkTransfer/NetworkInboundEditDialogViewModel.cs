@@ -140,13 +140,9 @@ namespace DocMgr.ViewModels.NetworkTransfer
             DeleteAttachmentCommand = new RelayCommand(
                 async item => await _pageDb.RunAsync(() => DeleteAttachmentAsync(item as SystemAttachment)),
                 item => item is SystemAttachment && CanUploadSignedAttachment);
-            ViewAttachmentCommand = new RelayCommand(item =>
-            {
-                if (item is SystemAttachment attachment)
-                {
-                    _dialogService.ShowSystemAttachmentView(attachment);
-                }
-            }, item => item is SystemAttachment);
+            ViewAttachmentCommand = new RelayCommand(
+                async item => await _pageDb.RunAsync(() => ViewAttachmentAsync(item as SystemAttachment)),
+                item => item is SystemAttachment);
             CompleteCommand = new RelayCommand(async _ => await _pageDb.RunAsync(CompleteAsync), _ => CanCompleteApproval);
             CloseCommand = new RelayCommand(_ => RequestClose?.Invoke(false));
             FillDefaultMaterialPathCommand = new RelayCommand(
@@ -1632,6 +1628,30 @@ namespace DocMgr.ViewModels.NetworkTransfer
                 await ReloadAttachmentsAsync();
                 await ReloadRecordAsync();
                 _dialogService.ShowMessage(message);
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError(ex.Message);
+            }
+        }
+
+        private async Task ViewAttachmentAsync(SystemAttachment? attachment)
+        {
+            if (attachment == null)
+            {
+                return;
+            }
+
+            try
+            {
+                SystemAttachment? latest = await _service.GetAttachmentByIdAsync(attachment.Id);
+                if (latest?.FileContent == null || latest.FileContent.Length == 0)
+                {
+                    _dialogService.ShowError("附件内容为空，无法查看。");
+                    return;
+                }
+
+                _dialogService.ShowSystemAttachmentView(latest);
             }
             catch (Exception ex)
             {

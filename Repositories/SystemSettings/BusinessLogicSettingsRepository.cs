@@ -22,6 +22,7 @@ namespace DocMgr.Repositories.SystemSettings
                 .FirstOrDefaultAsync();
             if (settings != null)
             {
+                await UpgradeLegacySameDayDefaultAsync(settings);
                 return settings;
             }
 
@@ -50,6 +51,30 @@ namespace DocMgr.Repositories.SystemSettings
 
                 throw;
             }
+        }
+
+        /// <summary>
+        /// 产品默认由「当天」改为「7天」。2026-11-20 之前写入的「当天」视为旧默认，读到时升为 7 天。
+        /// 该时间之后管理员再保存的「当天」保持不变。
+        /// </summary>
+        private async Task UpgradeLegacySameDayDefaultAsync(BusinessLogicSettings settings)
+        {
+            if (!string.Equals(
+                    settings.ApplicationOverdueSetting,
+                    ApplicationOverdueDomainValues.SameDay,
+                    StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            if (settings.UpdatedAt >= new DateTime(2026, 11, 20))
+            {
+                return;
+            }
+
+            settings.ApplicationOverdueSetting = ApplicationOverdueDomainValues.Days7;
+            settings.UpdatedAt = DateTime.Now;
+            await _dbContext.SaveChangesAsync();
         }
 
         public async Task SaveAsync(BusinessLogicSettings settings)

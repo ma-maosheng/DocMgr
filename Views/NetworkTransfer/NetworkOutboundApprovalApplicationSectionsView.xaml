@@ -30,9 +30,7 @@
                 <TextBlock Text="其他要求：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
                 <TextBlock Text="{Binding CurrentRecord.OtherRequests, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}" TextWrapping="Wrap" Margin="0,0,0,8"/>
                 <TextBlock Text="证明材料：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
-                <TextBlock Text="{Binding ProofMaterialDisplay, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}" Margin="0,0,0,8"/>
-                <TextBlock Text="备注：" Style="{StaticResource ArchiveRegisterApprovalReadOnlyLabelStyle}"/>
-                <TextBlock Text="{Binding CurrentRecord.Remark, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}" TextWrapping="Wrap"/>
+                <TextBlock Text="{Binding ProofMaterialDisplay, Mode=OneWay}" Style="{StaticResource ArchiveRegisterApprovalReadOnlyValueStyle}"/>
             </StackPanel>
         </GroupBox>
         <GroupBox Header="2. 资料信息" Style="{StaticResource Level1GroupBoxStyle}" Padding="10">

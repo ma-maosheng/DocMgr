@@ -10,17 +10,8 @@ namespace DocMgr.Repositories.Interfaces;
 /// </summary>
 public interface IHardDiskMediaRepository
 {
-    Task<List<HardDiskMedium>> GetOverviewMediaAsync();
-
-    Task<List<HardDiskMediaApplication>> GetOverviewApplicationsAsync();
-
-    Task<List<HardDiskMediaTransaction>> GetOverviewTransactionsAsync();
-
-    /// <summary>概览：离库处置单清单（轻量，不含明细）。</summary>
-    Task<List<HardDiskDisposalRecord>> GetOverviewDisposalRecordsAsync();
-
-    /// <summary>概览：盘库登记单清单（轻量，不含明细）。</summary>
-    Task<List<HardDiskInventoryRegisterRecord>> GetOverviewInventoryRegisterRecordsAsync();
+    /// <summary>硬盘总览：按状态、位置、申请和近 90 天流水做数据库聚合，不装载全表。</summary>
+    Task<HardDiskOverviewAggregate> GetOverviewAggregateAsync();
 
     Task<List<HardDiskMedium>> GetSelectableMediaAsync();
 

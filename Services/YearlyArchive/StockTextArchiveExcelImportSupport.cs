@@ -338,7 +338,7 @@ namespace DocMgr.Services.YearlyArchive
                 sheet.SetColumnWidth(i, ResolveColumnWidth(TemplateHeaders[i]));
             }
 
-            // 示例行：同盒两条子项，演示盒级字段可下填留空。
+            // 示例行：同一盒两份资料名称。盒级字段与同一资料的后续子项可留空下填。
             WriteExampleRow(
                 sheet.CreateRow(1),
                 sequence: "1",
@@ -384,6 +384,46 @@ namespace DocMgr.Services.YearlyArchive
                 subCategory: ArchiveRegisterDomainValues.SimulatedSubCategoryInspectionRecord,
                 organizationForm: ArchiveRegisterDomainValues.SimulatedOrganizationFormBound,
                 itemNote: string.Empty);
+
+            WriteExampleRow(
+                sheet.CreateRow(3),
+                sequence: string.Empty,
+                year: string.Empty,
+                projectName: string.Empty,
+                projectCode: string.Empty,
+                materialName: "成果资料",
+                sourceType: string.Empty,
+                provideUnit: string.Empty,
+                archivePurpose: string.Empty,
+                mediaType: string.Empty,
+                boxCount: string.Empty,
+                boxLocation: string.Empty,
+                boxSpecification: string.Empty,
+                boxRemarks: string.Empty,
+                itemName: "成果表",
+                copyCount: "1",
+                confidentialLevel: "秘密",
+                materialCategory: ArchiveRegisterDomainValues.SimulatedMaterialCategoryText,
+                subCategory: ArchiveRegisterDomainValues.SimulatedSubCategorySummaryReport,
+                organizationForm: ArchiveRegisterDomainValues.SimulatedOrganizationFormBound,
+                itemNote: string.Empty);
+        }
+
+        private static string JoinMaterialNames(IEnumerable<string?> names)
+        {
+            var list = new List<string>();
+            foreach (string? name in names)
+            {
+                string trimmed = name?.Trim() ?? string.Empty;
+                if (trimmed.Length == 0 || list.Contains(trimmed, StringComparer.Ordinal))
+                {
+                    continue;
+                }
+
+                list.Add(trimmed);
+            }
+
+            return string.Join("、", list);
         }
 
         private static void WriteExampleRow(
@@ -452,7 +492,7 @@ namespace DocMgr.Services.YearlyArchive
                 (ColumnYear, "必填；四位数字年份（实施年度）。"),
                 (ColumnProjectName, "必填；可手输新项目，系统按年度+名称匹配或新建。"),
                 (ColumnProjectCode, "可选；新建项目时可一并写入项目编号。"),
-                (ColumnMaterialName, "必填；资料名称。"),
+                (ColumnMaterialName, "必填；资料名称。同一档案盒可登记多份资料：换一份资料时在该行填写新名称，其下子项行留空则沿用上一份。立档事实按各自资料名称写入。"),
                 (ColumnSourceType, $"必填；{ArchiveRegisterDomainValues.SourceTypeInternal} / {ArchiveRegisterDomainValues.SourceTypeExternal}。空白时默认「{ArchiveRegisterDomainValues.SourceTypeInternal}」。可按子项填写，盒级可只在首行填写后下填。"),
                 (ColumnProvideUnit, $"必填；院内部门名称或外部单位名称（可手输历史机构名）。来源为「{ArchiveRegisterDomainValues.SourceTypeInternal}」且空白时默认「{ArchiveRegisterDomainValues.ProvideUnitArchiveRoom}」。"),
                 (ColumnArchivePurpose, $"必填；院管资料、短期存档 / {ArchiveOutboundDomainValues.ArchivePurposeLongTermStorage}。空白时默认「{ArchiveOutboundDomainValues.ArchivePurposeLongTermStorage}」。直办立档不支持「{ArchiveRegisterDomainValues.ArchivePurposeExternalEntrusted}」。"),
@@ -608,11 +648,6 @@ namespace DocMgr.Services.YearlyArchive
                 errors.Add("项目名称不能为空。");
             }
 
-            if (string.IsNullOrWhiteSpace(first.MaterialName))
-            {
-                errors.Add("资料名称不能为空。");
-            }
-
             string sourceType = string.IsNullOrWhiteSpace(first.SourceType)
                 ? ArchiveRegisterDomainValues.SourceTypeInternal
                 : first.SourceType.Trim();
@@ -741,6 +776,12 @@ namespace DocMgr.Services.YearlyArchive
                     ? ArchiveRegisterDomainValues.SimulatedOrganizationFormBound
                     : raw.OrganizationForm.Trim();
 
+                string itemMaterialName = raw.MaterialName?.Trim() ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(itemMaterialName))
+                {
+                    errors.Add($"第 {raw.ExcelRowNumber} 行资料名称不能为空。");
+                }
+
                 items.Add(new StockTextArchiveMediaItemDraft
                 {
                     ContentDesc = raw.ItemName,
@@ -751,7 +792,8 @@ namespace DocMgr.Services.YearlyArchive
                     SubCategory = subCategory,
                     OrganizationForm = organizationForm,
                     SourceType = sourceType,
-                    ProvideUnit = provideUnit
+                    ProvideUnit = provideUnit,
+                    MaterialName = itemMaterialName
                 });
             }
 
@@ -773,7 +815,7 @@ namespace DocMgr.Services.YearlyArchive
                 Year = first.Year?.Trim() ?? string.Empty,
                 ProjectName = first.ProjectName?.Trim() ?? string.Empty,
                 ProjectCode = first.ProjectCode?.Trim() ?? string.Empty,
-                MaterialName = first.MaterialName?.Trim() ?? string.Empty,
+                MaterialName = JoinMaterialNames(items.Select(item => item.MaterialName)),
                 SourceType = sourceType,
                 ProvideUnit = provideUnit,
                 ArchivePurpose = archivePurpose,

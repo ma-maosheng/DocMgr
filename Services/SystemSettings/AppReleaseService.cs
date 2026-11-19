@@ -151,6 +151,13 @@ public sealed class AppReleaseService : IAppReleaseService
                 return AppReleaseUpgradeStartResult.Fail("库内安装包大小与记录不一致，请联系系统管理员重新上传。");
             }
 
+            if (row.FileContent.Length < 2
+                || row.FileContent[0] != (byte)'M'
+                || row.FileContent[1] != (byte)'Z')
+            {
+                return AppReleaseUpgradeStartResult.Fail("库内安装包不是可执行文件，请联系系统管理员重新上传。");
+            }
+
             string directory = Path.Combine(Path.GetTempPath(), "DocMgrUpgrade");
             Directory.CreateDirectory(directory);
             string version = AppReleaseVersionSupport.TryNormalize(row.Version, out string canonical)
@@ -158,6 +165,13 @@ public sealed class AppReleaseService : IAppReleaseService
                 : "package";
             string setupPath = Path.Combine(directory, "DocMgr-Setup-" + version + ".exe");
             await File.WriteAllBytesAsync(setupPath, row.FileContent, cancellationToken);
+            if (!AppReleaseVersionSupport.TryReadPackageVersion(setupPath, out string fileVersion)
+                || !string.Equals(fileVersion, version, StringComparison.Ordinal))
+            {
+                TryDeleteUpgradeFile(setupPath);
+                return AppReleaseUpgradeStartResult.Fail("安装包里的版本号与发布记录不一致，已停止安装。请联系系统管理员重新上传。");
+            }
+
             AppReleaseVersionSupport.StartSilentUpgrade(setupPath);
             return AppReleaseUpgradeStartResult.Ok();
         }
@@ -168,6 +182,20 @@ public sealed class AppReleaseService : IAppReleaseService
         finally
         {
             _dbContext.Database.SetCommandTimeout(previousTimeout);
+        }
+    }
+
+    private static void TryDeleteUpgradeFile(string setupPath)
+    {
+        try
+        {
+            if (File.Exists(setupPath))
+            {
+                File.Delete(setupPath);
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
         }
     }
 

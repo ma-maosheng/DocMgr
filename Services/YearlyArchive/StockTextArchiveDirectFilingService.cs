@@ -135,11 +135,6 @@ namespace DocMgr.Services.YearlyArchive
                 errors.Add("项目名称不能为空。");
             }
 
-            if (string.IsNullOrWhiteSpace(request.MaterialName))
-            {
-                errors.Add("资料名称不能为空。");
-            }
-
             if (string.IsNullOrWhiteSpace(request.ArchivePurpose))
             {
                 errors.Add("库管模式不能为空。");
@@ -190,17 +185,33 @@ namespace DocMgr.Services.YearlyArchive
                         errors.Add("一份直办单只能使用同一种模拟载体类型。");
                     }
 
-                    var items = group.Items ?? Array.Empty<StockTextArchiveMediaItemDraft>();
-                    if (items.Count == 0)
+                    var materials = group.ResolveMaterials(request.MaterialName);
+                    if (materials.Count == 0)
                     {
-                        errors.Add($"第 {groupIndex + 1} 组介质至少需要一条资料子项。");
+                        errors.Add($"第 {groupIndex + 1} 组介质至少需要一份资料名称。");
                         continue;
                     }
+
+                    for (int materialIndex = 0; materialIndex < materials.Count; materialIndex++)
+                    {
+                        var material = materials[materialIndex];
+                        string materialPrefix = $"第 {groupIndex + 1} 组第 {materialIndex + 1} 份资料";
+                        if (string.IsNullOrWhiteSpace(material.MaterialName))
+                        {
+                            errors.Add($"{materialPrefix}：资料名称不能为空。");
+                        }
+
+                        var items = material.Items ?? Array.Empty<StockTextArchiveMediaItemDraft>();
+                        if (items.Count == 0)
+                        {
+                            errors.Add($"{materialPrefix}：至少需要一条资料子项。");
+                            continue;
+                        }
 
                     for (int itemIndex = 0; itemIndex < items.Count; itemIndex++)
                     {
                         var item = items[itemIndex];
-                        string prefix = $"第 {groupIndex + 1} 组第 {itemIndex + 1} 条子项";
+                        string prefix = $"{materialPrefix}第 {itemIndex + 1} 条子项";
                         if (string.IsNullOrWhiteSpace(item.ContentDesc))
                         {
                             errors.Add($"{prefix}：子项名称不能为空。");
@@ -243,6 +254,7 @@ namespace DocMgr.Services.YearlyArchive
                         {
                             errors.Add($"{prefix}：提供单位不能为空。");
                         }
+                    }
                     }
                 }
             }
@@ -287,6 +299,7 @@ namespace DocMgr.Services.YearlyArchive
                     .OrderBy(item => item.Id)
                     .Select(item => item.Id)
                     .ToList();
+                int materialCount = persisted.MediaEntries.Sum(entry => entry.Materials?.Count ?? 0);
                 if (mediaItemIds.Count == 0)
                 {
                     throw new InvalidOperationException($"建档记录 [{persisted.FormNo}] 未包含可入盒的资料子项。");
@@ -333,7 +346,7 @@ namespace DocMgr.Services.YearlyArchive
                         + $"建档单号：{persisted.FormNo}\n"
                         + $"档案盒编号：{newBox.ArchiveSequenceNo}\n"
                         + $"物理位置编号：{newBox.BoxLocationCode}\n"
-                        + $"本次已入盒 {mediaItemIds.Count} 个资料子项。"
+                        + $"本次已入盒 {materialCount} 份资料、{mediaItemIds.Count} 个资料子项。"
                 };
             }
             catch (Exception ex)
@@ -374,38 +387,56 @@ namespace DocMgr.Services.YearlyArchive
             var mediaEntries = new List<YearlyArchiveRegisterMedia>();
             foreach (var group in request.MediaGroups)
             {
+                var materialDrafts = group.ResolveMaterials(request.MaterialName);
+                int itemCount = materialDrafts.Sum(material => material.Items?.Count ?? 0);
                 var media = new YearlyArchiveRegisterMedia
                 {
                     MediaKind = ArchiveRegisterDomainValues.MediaKindSimulated,
                     MediaType = group.MediaType.Trim(),
-                    MediaCount = group.Items.Count,
+                    MediaCount = itemCount,
                     Disposition = ArchiveRegisterDomainValues.SimulatedDispositionRetain
                 };
 
-                foreach (var item in group.Items)
+                int sortOrder = 1;
+                foreach (var materialDraft in materialDrafts)
                 {
-                    string confidential = ArchiveRegisterDomainValues.NormalizeConfidentialLevel(item.ConfidentialLevel);
-                    if (string.IsNullOrWhiteSpace(confidential))
+                    var material = new YearlyArchiveRegisterMaterial
                     {
-                        confidential = "秘密";
+                        SortOrder = sortOrder++,
+                        MaterialName = materialDraft.MaterialName?.Trim() ?? string.Empty,
+                        MediaEntry = media
+                    };
+
+                    foreach (var item in materialDraft.Items ?? Array.Empty<StockTextArchiveMediaItemDraft>())
+                    {
+                        string confidential = ArchiveRegisterDomainValues.NormalizeConfidentialLevel(item.ConfidentialLevel);
+                        if (string.IsNullOrWhiteSpace(confidential))
+                        {
+                            confidential = "秘密";
+                        }
+
+                        var entity = new YearlyArchiveRegisterMediaItem
+                        {
+                            ContentDesc = item.ContentDesc.Trim(),
+                            ContentCount = item.ContentCount < 1 ? 1 : item.ContentCount,
+                            Note = item.Note?.Trim() ?? string.Empty,
+                            ConfidentialLevel = confidential,
+                            SourceType = ResolveItemSourceType(item, request),
+                            ProvideUnit = ResolveItemProvideUnit(item, request),
+                            RegisterMaterial = material,
+                            MediaEntry = media,
+                            SimulatedDetail = SimulatedMediaItemClassificationSupport.CreateDetail(
+                                item.MaterialCategory,
+                                item.SubCategory,
+                                item.OrganizationForm)
+                        };
+                        material.Items.Add(entity);
+                        media.Items.Add(entity);
                     }
 
-                    media.Items.Add(new YearlyArchiveRegisterMediaItem
-                    {
-                        ContentDesc = item.ContentDesc.Trim(),
-                        ContentCount = item.ContentCount < 1 ? 1 : item.ContentCount,
-                        Note = item.Note?.Trim() ?? string.Empty,
-                        ConfidentialLevel = confidential,
-                        SourceType = ResolveItemSourceType(item, request),
-                        ProvideUnit = ResolveItemProvideUnit(item, request),
-                        SimulatedDetail = SimulatedMediaItemClassificationSupport.CreateDetail(
-                            item.MaterialCategory,
-                            item.SubCategory,
-                            item.OrganizationForm)
-                    });
+                    media.Materials.Add(material);
                 }
 
-                ArchiveRegisterMaterialSummarySupport.EnsureSingleMaterial(media, request.MaterialName);
                 mediaEntries.Add(media);
             }
 
@@ -417,7 +448,7 @@ namespace DocMgr.Services.YearlyArchive
                 ApplicantDate = archiveYearDate,
                 ProjectId = project.Id,
                 ProjectName = project.ProjectName,
-                MaterialName = request.MaterialName.Trim(),
+                MaterialName = ArchiveRegisterMaterialSummarySupport.Build(mediaEntries),
                 ArchivePurpose = string.IsNullOrWhiteSpace(request.ArchivePurpose)
                     ? ArchiveOutboundDomainValues.ArchivePurposeLongTermStorage
                     : request.ArchivePurpose.Trim(),

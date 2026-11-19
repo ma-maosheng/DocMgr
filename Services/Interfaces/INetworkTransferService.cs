@@ -171,6 +171,9 @@ public interface INetworkTransferService
 
     Task<IReadOnlyList<SystemAttachment>> GetAttachmentsAsync(string businessType, string businessNo);
 
+    /// <summary>按主键读取附件，含文件内容。列表查询不含内容。</summary>
+    Task<SystemAttachment?> GetAttachmentByIdAsync(int attachmentId);
+
     Task<(bool Ok, string Message, SystemAttachment? Attachment)> UploadAttachmentAsync(
         string businessType,
         int recordId,

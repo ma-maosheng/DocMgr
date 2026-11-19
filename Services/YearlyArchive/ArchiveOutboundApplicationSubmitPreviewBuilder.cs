@@ -26,7 +26,7 @@ namespace DocMgr.Services.YearlyArchive
             lines.Add(string.Empty);
             lines.Add("提交后将执行以下逻辑：");
             lines.Add("1. 申请单状态变更为「已提交」，进入审批流程。");
-            lines.Add($"2. 审批截止日设为提交后 {ArchiveOutboundDomainValues.DefaultApprovalDeadlineDays} 个自然日。");
+            lines.Add("2. 若逾期仍未审批，将按系统「申请单逾期」时限自动作废，并注销预订。");
 
             int syncIndex = 3;
             foreach (var group in ArchiveOutboundContainerUnitSupport.GroupItems(record.Items))

@@ -131,14 +131,19 @@ public sealed partial class ArchiveInventoryRegisterService : IArchiveInventoryR
             record.Items = await BuildElectronicItemsAsync(record.RegisterKind, items, excludeRecordId: null, now);
         }
 
-        _repository.AddRecord(record);
-        await _repository.SaveChangesAsync();
-
-        if (!IsSimulatedMediaKind(record.MediaKind))
+        var hardDisksForLock = IsSimulatedMediaKind(record.MediaKind)
+            ? null
+            : await LoadHardDisksForElectronicDraftAsync(record.MediaKind, items);
+        await _repository.ExecuteInTransactionAsync(async () =>
         {
-            LockHardDisksIfNeeded(record, await LoadHardDisksForElectronicDraftAsync(record.MediaKind, items), now);
+            _repository.AddRecord(record);
             await _repository.SaveChangesAsync();
-        }
+            if (hardDisksForLock != null)
+            {
+                LockHardDisksIfNeeded(record, hardDisksForLock, now);
+                await _repository.SaveChangesAsync();
+            }
+        });
 
         _repository.ClearChangeTracker();
         return (await _repository.GetRecordByIdAsync(record.Id))!;
@@ -197,9 +202,13 @@ public sealed partial class ArchiveInventoryRegisterService : IArchiveInventoryR
             }
         }
 
-        await _repository.SaveChangesAsync();
-        LockHardDisksIfNeeded(existing, await LoadHardDisksForElectronicDraftAsync(existing.MediaKind, items), now);
-        await _repository.SaveChangesAsync();
+        var hardDisksForLock = await LoadHardDisksForElectronicDraftAsync(existing.MediaKind, items);
+        await _repository.ExecuteInTransactionAsync(async () =>
+        {
+            await _repository.SaveChangesAsync();
+            LockHardDisksIfNeeded(existing, hardDisksForLock, now);
+            await _repository.SaveChangesAsync();
+        });
 
         _repository.ClearChangeTracker();
         return (await _repository.GetRecordByIdAsync(existing.Id))!;

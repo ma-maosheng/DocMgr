@@ -502,6 +502,7 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
                 <Border Style="{StaticResource SectionHeaderBarStyle}">
@@ -553,7 +554,10 @@
                           HeadersVisibility="Column"
                           BorderThickness="0"
                           ItemsSource="{Binding LedgerRows}"
-                          SelectedItem="{Binding SelectedRow, Mode=TwoWay}">
+                          SelectedItem="{Binding SelectedRow, Mode=TwoWay}"
+                          EnableRowVirtualization="True"
+                          VirtualizingPanel.IsVirtualizing="True"
+                          VirtualizingPanel.VirtualizationMode="Recycling">
                     <DataGrid.Columns>
                         <DataGridTemplateColumn Width="176" IsReadOnly="True">
                             <DataGridTemplateColumn.Header>
@@ -695,6 +699,47 @@
                         <DataGridTextColumn Header="借出提示" Binding="{Binding BorrowHintDisplay, Mode=OneWay}" Width="*"/>
                     </DataGrid.Columns>
                 </DataGrid>
+                <Border Grid.Row="2"
+                        Background="#FAFAFA"
+                        BorderBrush="#E0E0E0"
+                        BorderThickness="0,1,0,0"
+                        Padding="12,8"
+                        Visibility="{Binding ShowPaginationBar, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <DockPanel LastChildFill="False">
+                        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="每页条数：" VerticalAlignment="Center" FontWeight="Bold"/>
+                            <ComboBox Width="80"
+                                      Height="28"
+                                      Margin="8,0,16,0"
+                                      ItemsSource="{Binding PageSizeOptions}"
+                                      SelectedItem="{Binding PageSize, Mode=TwoWay}"/>
+                            <TextBlock VerticalAlignment="Center"
+                                       Foreground="#546E7A"
+                                       Text="{Binding PageInfo, Mode=OneWay}"/>
+                        </StackPanel>
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button Content="首页"
+                                    Margin="0,0,6,0"
+                                    Padding="8,2"
+                                    Style="{StaticResource CompactToolbarButtonStyle}"
+                                    Command="{Binding FirstPageCommand}"/>
+                            <Button Content="上一页"
+                                    Margin="0,0,6,0"
+                                    Padding="8,2"
+                                    Style="{StaticResource CompactToolbarButtonStyle}"
+                                    Command="{Binding PreviousPageCommand}"/>
+                            <Button Content="下一页"
+                                    Margin="0,0,6,0"
+                                    Padding="8,2"
+                                    Style="{StaticResource CompactToolbarButtonStyle}"
+                                    Command="{Binding NextPageCommand}"/>
+                            <Button Content="末页"
+                                    Padding="8,2"
+                                    Style="{StaticResource CompactToolbarButtonStyle}"
+                                    Command="{Binding LastPageCommand}"/>
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
             </Grid>
         </Border>
 

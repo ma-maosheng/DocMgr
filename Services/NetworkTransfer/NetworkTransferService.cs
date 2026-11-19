@@ -182,18 +182,22 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         record.BusinessChain = NetworkArchiveBusinessChainSupport.CreateForInbound(record, now);
 
         ValidateInboundHeader(record);
-        _repository.AddInbound(record);
-        await _repository.SaveChangesAsync();
-        if (isExternalOffline)
+        await using (var transaction = await _repository.BeginTransactionAsync())
         {
-            await _repository.ReplaceInboundMediaEntriesAsync(
-                record.Id,
-                draft.MediaEntries?.ToList() ?? []);
+            _repository.AddInbound(record);
             await _repository.SaveChangesAsync();
-        }
+            if (isExternalOffline)
+            {
+                await _repository.ReplaceInboundMediaEntriesAsync(
+                    record.Id,
+                    draft.MediaEntries?.ToList() ?? []);
+                await _repository.SaveChangesAsync();
+            }
 
-        NetworkArchiveBusinessChainSupport.SynchronizeInboundTasks(record.BusinessChain, record, now);
-        await _repository.SaveChangesAsync();
+            NetworkArchiveBusinessChainSupport.SynchronizeInboundTasks(record.BusinessChain, record, now);
+            await _repository.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
         _repository.ClearChangeTracker();
         return (await _repository.GetInboundByIdAsync(record.Id))!;
     }
@@ -251,13 +255,18 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         NetworkArchiveBusinessChainSupport.SynchronizeInboundTasks(existing.BusinessChain, existing, DateTime.Now);
 
         ValidateInboundHeader(existing);
-        await _repository.SaveChangesAsync();
-        if (isExternalOffline)
+        await using (var transaction = await _repository.BeginTransactionAsync())
         {
-            await _repository.ReplaceInboundMediaEntriesAsync(
-                existing.Id,
-                draft.MediaEntries?.ToList() ?? []);
             await _repository.SaveChangesAsync();
+            if (isExternalOffline)
+            {
+                await _repository.ReplaceInboundMediaEntriesAsync(
+                    existing.Id,
+                    draft.MediaEntries?.ToList() ?? []);
+                await _repository.SaveChangesAsync();
+            }
+
+            await transaction.CommitAsync();
         }
 
         _repository.ClearChangeTracker();
@@ -669,7 +678,6 @@ public sealed partial class NetworkTransferService : INetworkTransferService
             Year = draft.Year?.Trim() ?? string.Empty,
             Reason = draft.Reason?.Trim() ?? string.Empty,
             OtherRequests = draft.OtherRequests?.Trim() ?? string.Empty,
-            Remark = draft.Remark?.Trim() ?? string.Empty,
             ProofMaterialNote = NormalizeOutboundProofMaterialNote(draft.ProofMaterialNote),
             ApplicantUserId = currentUser.Id,
             ApplicantName = ResolveUserDisplayName(currentUser),
@@ -681,11 +689,15 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         record.BusinessChain = NetworkArchiveBusinessChainSupport.CreateForOutbound(record, now);
 
         ValidateOutboundHeader(record);
-        _repository.AddOutbound(record);
-        await _repository.SaveChangesAsync();
-        await ReplaceOutboundMediaAndItemsAsync(record, draft.MediaEntries?.ToList() ?? []);
-        NetworkArchiveBusinessChainSupport.SynchronizeOutboundTasks(record.BusinessChain, record, now);
-        await _repository.SaveChangesAsync();
+        await using (var transaction = await _repository.BeginTransactionAsync())
+        {
+            _repository.AddOutbound(record);
+            await _repository.SaveChangesAsync();
+            await ReplaceOutboundMediaAndItemsAsync(record, draft.MediaEntries?.ToList() ?? []);
+            NetworkArchiveBusinessChainSupport.SynchronizeOutboundTasks(record.BusinessChain, record, now);
+            await _repository.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
         // 弹窗 Scoped DbContext 会跨多次「保存草稿」复用；清空跟踪后再重载，避免 Tasks 同键冲突。
         _repository.ClearChangeTracker();
         return (await _repository.GetOutboundByIdAsync(record.Id))!;
@@ -715,9 +727,13 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         NetworkArchiveBusinessChainSupport.SynchronizeOutboundTasks(existing.BusinessChain, existing, DateTime.Now);
 
         ValidateOutboundHeader(existing);
-        await _repository.SaveChangesAsync();
-        await ReplaceOutboundMediaAndItemsAsync(existing, draft.MediaEntries?.ToList() ?? []);
-        await _repository.SaveChangesAsync();
+        await using (var transaction = await _repository.BeginTransactionAsync())
+        {
+            await _repository.SaveChangesAsync();
+            await ReplaceOutboundMediaAndItemsAsync(existing, draft.MediaEntries?.ToList() ?? []);
+            await _repository.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
         _repository.ClearChangeTracker();
         return (await _repository.GetOutboundByIdAsync(existing.Id))!;
     }
@@ -1652,6 +1668,10 @@ public sealed partial class NetworkTransferService : INetworkTransferService
     public async Task<IReadOnlyList<SystemAttachment>> GetAttachmentsAsync(string businessType, string businessNo) =>
         await _repository.GetAttachmentsAsync(businessType, businessNo);
 
+    /// <inheritdoc />
+    public Task<SystemAttachment?> GetAttachmentByIdAsync(int attachmentId) =>
+        _repository.GetAttachmentByIdAsync(attachmentId);
+
     public async Task<(bool Ok, string Message, SystemAttachment? Attachment)> UploadAttachmentAsync(
         string businessType,
         int recordId,
@@ -1977,7 +1997,6 @@ public sealed partial class NetworkTransferService : INetworkTransferService
         target.Year = draft.Year?.Trim() ?? string.Empty;
         target.Reason = draft.Reason?.Trim() ?? string.Empty;
         target.OtherRequests = draft.OtherRequests?.Trim() ?? string.Empty;
-        target.Remark = draft.Remark?.Trim() ?? string.Empty;
         target.ProofMaterialNote = NormalizeOutboundProofMaterialNote(draft.ProofMaterialNote);
     }
 

@@ -498,10 +498,10 @@ namespace DocMgr.Repositories.YearlyArchive
 
         public Task<List<YearlyArchiveOutboundRecord>> GetSubmittedRecordsPastDeadlineAsync(DateTime asOf)
         {
+            // 是否到期由逾期设置按申请日计算，不使用提交时写死的截止日。
+            _ = asOf;
             return _dbContext.YearlyArchiveOutboundRecords
-                .Where(record => record.Status == YearlyArchiveOutboundRecord.Submitted
-                    && record.ApprovalDeadline != null
-                    && record.ApprovalDeadline < asOf)
+                .Where(record => record.Status == YearlyArchiveOutboundRecord.Submitted)
                 .ToListAsync();
         }
 

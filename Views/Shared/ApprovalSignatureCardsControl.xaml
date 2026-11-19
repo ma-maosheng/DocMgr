@@ -159,12 +159,22 @@
                        VerticalAlignment="Center"
                        Foreground="#64748B"
                        FontSize="12"/>
+            <!-- 未显示意见时不绑定 ApprovalOpinion，避免入网等无该属性的页面在刷新时刷绑定错误。 -->
             <TextBox Width="280"
                      Height="{StaticResource DialogFormControlHeight}"
                      Padding="8,0"
                      VerticalContentAlignment="Center"
-                     IsEnabled="{Binding CanEditSigners}"
-                     Text="{Binding ApprovalOpinion, UpdateSourceTrigger=PropertyChanged}"/>
+                     IsEnabled="{Binding CanEditSigners}">
+                <TextBox.Style>
+                    <Style TargetType="TextBox">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding ShowApprovalOpinion, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
+                                <Setter Property="Text" Value="{Binding ApprovalOpinion, UpdateSourceTrigger=PropertyChanged}"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBox.Style>
+            </TextBox>
         </StackPanel>
     </StackPanel>
 </UserControl>

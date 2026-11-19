@@ -1,5 +1,5 @@
 version: 1
-generatedAt: 2026-11-13T06:30:12Z
+generatedAt: 2026-11-16T03:15:08Z
 tables:
   AerialPhoto:
     tableName: AerialPhotos
@@ -7719,12 +7719,6 @@ tables:
         aliases: []
       OtherRequests:
         chineseName: 其他要求
-        description: ''
-        clrType: String
-        needsReview: false
-        aliases: []
-      Remark:
-        chineseName: 备注
         description: ''
         clrType: String
         needsReview: false

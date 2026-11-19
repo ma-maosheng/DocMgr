@@ -909,18 +909,28 @@ namespace DocMgr.Services.HardDiskMedia
                 application.CreatedTime = now;
                 application.UpdatedTime = now;
 
-                _hardDiskMediaRepository.AddApplication(application);
-
-                await _hardDiskMediaRepository.SaveChangesAsync();
-
-                if (ShouldKeepOutboundLock(application.ApplicationType, application.ApplicationStatus))
+                await using var transaction = await _hardDiskMediaRepository.BeginTransactionAsync();
+                try
                 {
-                    var lockMedium = await _hardDiskMediaRepository.GetActiveMediumWithLedgerByIdForUpdateAsync(application.MediumId)
-                        ?? throw new InvalidOperationException("未找到申请关联的硬盘介质。");
-
-                    await EnsureCanLockOutboundMediumAsync(application, lockMedium);
-                    LockOutboundMedium(application, lockMedium);
+                    _hardDiskMediaRepository.AddApplication(application);
                     await _hardDiskMediaRepository.SaveChangesAsync();
+
+                    if (ShouldKeepOutboundLock(application.ApplicationType, application.ApplicationStatus))
+                    {
+                        var lockMedium = await _hardDiskMediaRepository.GetActiveMediumWithLedgerByIdForUpdateAsync(application.MediumId)
+                            ?? throw new InvalidOperationException("未找到申请关联的硬盘介质。");
+
+                        await EnsureCanLockOutboundMediumAsync(application, lockMedium);
+                        LockOutboundMedium(application, lockMedium);
+                        await _hardDiskMediaRepository.SaveChangesAsync();
+                    }
+
+                    await transaction.CommitAsync();
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
                 }
 
                 return;

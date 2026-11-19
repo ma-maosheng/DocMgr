@@ -9,7 +9,7 @@ namespace DocMgr.Models.SystemSettings
         public const string Days7 = "Days7";
         public const string Days30 = "Days30";
 
-        public const string Default = SameDay;
+        public const string Default = Days7;
 
         public static IReadOnlyList<ApplicationOverdueOption> AllOptions { get; } =
         [

@@ -13,6 +13,12 @@ namespace DocMgr.Services.Interfaces
 
         Task<IReadOnlyList<FilingLedgerRow>> SearchAsync(FilingLedgerSearchCriteria criteria);
 
+        /// <summary>按页查询立档台账。页码和页大小写在条件里；页大小小于等于 0 时返回全部命中。</summary>
+        Task<FilingLedgerSearchPage> SearchPageAsync(FilingLedgerSearchCriteria criteria);
+
+        /// <summary>当前排序下，排在指定立档事实之前的命中条数。</summary>
+        Task<int> CountRowsBeforeAsync(FilingLedgerSearchCriteria criteria, DateTime filedAt, int filingFactId);
+
         Task<IReadOnlyList<FilingLedgerContentEntryInfo>> GetContentEntriesByMediaItemIdAsync(
             int mediaItemId,
             string? filingStoragePath);

@@ -2,6 +2,7 @@ using DocMgr.ViewModels.YearlyArchive;
 using Microsoft.Extensions.DependencyInjection;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 
 namespace DocMgr.Views.YearlyArchive
 {
@@ -32,6 +33,26 @@ namespace DocMgr.Views.YearlyArchive
             Loaded -= StockTextArchiveDirectFilingPage_Loaded;
             Unloaded -= StockTextArchiveDirectFilingPage_Unloaded;
             _pageScope.Dispose();
+        }
+
+        /// <summary>
+        /// 子项卡片只做横向滚动，滚轮继续交给页面纵向滚动。
+        /// </summary>
+        private void SttItemScroller_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            if (sender is not ScrollViewer scroller || e.Handled || scroller.ScrollableHeight > 0)
+                return;
+
+            e.Handled = true;
+            if (scroller.Parent is not UIElement parent)
+                return;
+
+            var forwarded = new MouseWheelEventArgs(e.MouseDevice, e.Timestamp, e.Delta)
+            {
+                RoutedEvent = UIElement.MouseWheelEvent,
+                Source = sender
+            };
+            parent.RaiseEvent(forwarded);
         }
     }
 }

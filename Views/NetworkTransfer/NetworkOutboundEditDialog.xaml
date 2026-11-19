@@ -75,12 +75,6 @@
                                                  Text="{Binding ProofMaterialName, UpdateSourceTrigger=PropertyChanged}"/>
                                     </DockPanel>
                                 </DockPanel>
-                                <DockPanel Margin="0,2" LastChildFill="True">
-                                    <TextBlock DockPanel.Dock="Left" Width="110" Style="{StaticResource FormLabelTextBlockStyle}" Text="备注："/>
-                                    <TextBox Style="{StaticResource ArchiveRegisterFormTextBoxStyle}"
-                                             Text="{Binding CurrentRecord.Remark, UpdateSourceTrigger=PropertyChanged}"
-                                             IsEnabled="{Binding CanEditForm}"/>
-                                </DockPanel>
                             </StackPanel>
                         </GroupBox>
                         <GroupBox Header="2. 资料信息" Style="{StaticResource Level1GroupBoxStyle}" Padding="10">

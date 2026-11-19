@@ -371,7 +371,7 @@ namespace DocMgr.Data.Interceptors
             {
                 DateTime dateTime => dateTime.ToString("yyyy-MM-dd HH:mm:ss.fff"),
                 DateTimeOffset dateTimeOffset => dateTimeOffset.ToString("yyyy-MM-dd HH:mm:ss.fff zzz"),
-                byte[] bytes => Convert.ToBase64String(bytes),
+                byte[] bytes => $"byte[{bytes.Length}]",
                 Enum enumValue => enumValue.ToString(),
                 bool or byte or sbyte or short or ushort or int or uint or long or ulong
                     or float or double or decimal or char or string or Guid => value,

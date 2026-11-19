@@ -1,5 +1,4 @@
-﻿using DocMgr.Infrastructure.AgentDebugLogging;
-using DocMgr.ViewModels.YearlyArchive;
+﻿using DocMgr.ViewModels.YearlyArchive;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Linq;
@@ -157,15 +156,8 @@ namespace DocMgr.Views.YearlyArchive
 
         private void UpdateSelectedRecordsFromSender(object sender)
         {
-            // #region agent log
-            try
-            {
-            // #endregion
             if (ViewModel.SuppressPendingListSelectionSync)
             {
-                // #region agent log
-                AgentDebugSessionLog.Write("E", "ArchiveFilingPage.UpdateSelectedRecordsFromSender", "suppressed", new { suppress = true });
-                // #endregion
                 return;
             }
 
@@ -184,25 +176,7 @@ namespace DocMgr.Views.YearlyArchive
             var selected = listView.SelectedItems
                 .Cast<YearlyArchiveRegisterRecord>()
                 .ToList();
-            // #region agent log
-            AgentDebugSessionLog.Write("E", "ArchiveFilingPage.UpdateSelectedRecordsFromSender", "selection sync", new
-            {
-                count = selected.Count,
-                ids = selected.Select(r => r.Id).ToArray(),
-                listName = listView.Name,
-                threadId = Environment.CurrentManagedThreadId,
-                isUi = Dispatcher.CheckAccess()
-            });
-            // #endregion
             ViewModel.SelectedRecords = selected;
-            // #region agent log
-            }
-            catch (Exception ex)
-            {
-                AgentDebugSessionLog.WriteException("E", "ArchiveFilingPage.UpdateSelectedRecordsFromSender", "selection sync threw", ex);
-                throw;
-            }
-            // #endregion
         }
 
         private void DgElectronicRecordItemsStepTwo_LoadingRow(object sender, DataGridRowEventArgs e)

@@ -14,7 +14,7 @@ namespace DocMgr.Services.Interfaces
     public interface IStockOpticalDiscDirectFilingService
     {
         /// <summary>
-        /// 扫描光盘根目录，列出整盘与一级业务文件夹。
+        /// 扫描资料所属目录。按指派方式展开为子项、资料、项目或年度。
         /// </summary>
         StockOpticalDiscDirectoryScanResult ScanDirectory(string? rootPath);
 

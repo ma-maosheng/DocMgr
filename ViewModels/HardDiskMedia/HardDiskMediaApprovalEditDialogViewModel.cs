@@ -37,9 +37,15 @@ namespace DocMgr.ViewModels.HardDiskMedia
         private DateTime? _archiveRoomHeadDate;
         private string _archiveDeputyPresident = string.Empty;
         private DateTime? _archiveDeputyPresidentDate;
+        private string _productionHead = string.Empty;
+        private DateTime? _productionHeadDate;
+        private string _productionVicePresident = string.Empty;
+        private DateTime? _productionVicePresidentDate;
         private bool _enableDeptHead = true;
         private bool _enableArchiveRoomHead = true;
         private bool _enableArchiveDeputyPresident;
+        private bool _enableProductionHead;
+        private bool _enableProductionVicePresident;
         private string _handoverApplicant = string.Empty;
         private string _handoverAdmin = string.Empty;
         private DateTime _handoverDate;
@@ -76,6 +82,10 @@ namespace DocMgr.ViewModels.HardDiskMedia
             ArchiveRoomHeadDate = (application.ArchiveRoomHeadDate ?? now).Date;
             ArchiveDeputyPresident = application.ArchiveDeputyPresident?.Trim() ?? string.Empty;
             ArchiveDeputyPresidentDate = (application.ArchiveDeputyPresidentDate ?? now).Date;
+            ProductionHead = application.ProductionHead?.Trim() ?? string.Empty;
+            ProductionHeadDate = (application.ProductionHeadDate ?? now).Date;
+            ProductionVicePresident = application.ProductionVicePresident?.Trim() ?? string.Empty;
+            ProductionVicePresidentDate = (application.ProductionVicePresidentDate ?? now).Date;
 
             // 办理交接默认包含两人：申请人 + 资料管理员（如无法查到资料管理员则使用当前用户）
             HandoverApplicant = string.IsNullOrWhiteSpace(application.ApplicantName) ? currentUser?.RealName?.Trim() ?? string.Empty : application.ApplicantName.Trim();
@@ -304,38 +314,44 @@ namespace DocMgr.ViewModels.HardDiskMedia
         public bool ShowDeptHead => EnableDeptHead;
         public bool ShowArchiveRoomHead => EnableArchiveRoomHead;
         public bool ShowArchiveDeputyPresident => EnableArchiveDeputyPresident;
-        public bool ShowProductionHead => false;
-        public bool ShowProductionVicePresident => false;
-        public bool ShowReviewSignerSection => EnableDeptHead || EnableArchiveRoomHead;
-        public bool ShowApproveSignerSection => EnableArchiveDeputyPresident;
+        public bool ShowProductionHead => EnableProductionHead;
+        public bool ShowProductionVicePresident => EnableProductionVicePresident;
+        public bool ShowReviewSignerSection => EnableDeptHead || EnableArchiveRoomHead || EnableProductionHead;
+        public bool ShowApproveSignerSection => EnableArchiveDeputyPresident || EnableProductionVicePresident;
         public bool CanEditSigners => CanApprovePass;
         public DateTime? SignatureDateMin =>
             ApprovalSignatureDateSupport.ResolveMinDate(_application.FirstPrintedAt, _application.PrintedTime, _application.PrintCount);
 
-        /// <summary>生产科签字占位（本业务不启用）。</summary>
         public string ProductionHead
         {
-            get => string.Empty;
-            set { }
+            get => _productionHead;
+            set => SetProperty(ref _productionHead, value);
         }
 
         public DateTime? ProductionHeadDate
         {
-            get => null;
-            set { }
+            get => _productionHeadDate;
+            set
+            {
+                var clamped = ApprovalSignatureDateSupport.Clamp(value, SignatureDateMin);
+                SetProperty(ref _productionHeadDate, clamped);
+            }
         }
 
-        /// <summary>分管生产院长签字占位（本业务不启用）。</summary>
         public string ProductionVicePresident
         {
-            get => string.Empty;
-            set { }
+            get => _productionVicePresident;
+            set => SetProperty(ref _productionVicePresident, value);
         }
 
         public DateTime? ProductionVicePresidentDate
         {
-            get => null;
-            set { }
+            get => _productionVicePresidentDate;
+            set
+            {
+                var clamped = ApprovalSignatureDateSupport.Clamp(value, SignatureDateMin);
+                SetProperty(ref _productionVicePresidentDate, clamped);
+            }
         }
 
         public bool EnableDeptHead
@@ -354,6 +370,18 @@ namespace DocMgr.ViewModels.HardDiskMedia
         {
             get => _enableArchiveDeputyPresident;
             private set => SetProperty(ref _enableArchiveDeputyPresident, value);
+        }
+
+        public bool EnableProductionHead
+        {
+            get => _enableProductionHead;
+            private set => SetProperty(ref _enableProductionHead, value);
+        }
+
+        public bool EnableProductionVicePresident
+        {
+            get => _enableProductionVicePresident;
+            private set => SetProperty(ref _enableProductionVicePresident, value);
         }
 
         /// <summary>
@@ -430,9 +458,13 @@ namespace DocMgr.ViewModels.HardDiskMedia
             EnableDeptHead = chain.DeptHead.IsEnabled;
             EnableArchiveRoomHead = chain.ArchiveRoomHead.IsEnabled;
             EnableArchiveDeputyPresident = chain.ArchiveDeputyPresident.IsEnabled;
+            EnableProductionHead = chain.ProductionHead.IsEnabled;
+            EnableProductionVicePresident = chain.ProductionVicePresident.IsEnabled;
             OnPropertyChanged(nameof(ShowDeptHead));
             OnPropertyChanged(nameof(ShowArchiveRoomHead));
             OnPropertyChanged(nameof(ShowArchiveDeputyPresident));
+            OnPropertyChanged(nameof(ShowProductionHead));
+            OnPropertyChanged(nameof(ShowProductionVicePresident));
             OnPropertyChanged(nameof(ShowReviewSignerSection));
             OnPropertyChanged(nameof(ShowApproveSignerSection));
             OnPropertyChanged(nameof(CanEditSigners));
@@ -457,6 +489,16 @@ namespace DocMgr.ViewModels.HardDiskMedia
             if (EnableArchiveDeputyPresident && string.IsNullOrWhiteSpace(ArchiveDeputyPresident))
             {
                 ArchiveDeputyPresident = _application.ArchiveDeputyPresident;
+            }
+
+            if (EnableProductionHead && string.IsNullOrWhiteSpace(ProductionHead))
+            {
+                ProductionHead = _application.ProductionHead;
+            }
+
+            if (EnableProductionVicePresident && string.IsNullOrWhiteSpace(ProductionVicePresident))
+            {
+                ProductionVicePresident = _application.ProductionVicePresident;
             }
         }
 
@@ -828,6 +870,10 @@ namespace DocMgr.ViewModels.HardDiskMedia
             _application.DeptHead = DeptHead?.Trim() ?? string.Empty;
             _application.ArchiveRoomHead = ArchiveRoomHead?.Trim() ?? string.Empty;
             _application.ArchiveDeputyPresident = ArchiveDeputyPresident?.Trim() ?? string.Empty;
+            _application.ProductionHead = EnableProductionHead ? ProductionHead?.Trim() ?? string.Empty : string.Empty;
+            _application.ProductionVicePresident = EnableProductionVicePresident
+                ? ProductionVicePresident?.Trim() ?? string.Empty
+                : string.Empty;
             var missing = await HardDiskMediaApplicationViewModelHelper.CollectMissingApprovalErrorsAsync(
                 _application,
                 _approvalWorkflowService,
@@ -856,6 +902,18 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 return null;
             }
 
+            if (EnableProductionHead && !ProductionHeadDate.HasValue)
+            {
+                _dialogService.ShowMessage($"请填写{ApprovalWorkflowDomainValues.DisplayProductionHead}日期。");
+                return null;
+            }
+
+            if (EnableProductionVicePresident && !ProductionVicePresidentDate.HasValue)
+            {
+                _dialogService.ShowMessage($"请填写{ApprovalWorkflowDomainValues.DisplayProductionVicePresident}日期。");
+                return null;
+            }
+
             return new HardDiskMediaApprovalInput
             {
                 DeptHead = DeptHead.Trim(),
@@ -864,6 +922,10 @@ namespace DocMgr.ViewModels.HardDiskMedia
                 ArchiveRoomHeadDate = ArchiveRoomHeadDate,
                 ArchiveDeputyPresident = ArchiveDeputyPresident.Trim(),
                 ArchiveDeputyPresidentDate = ArchiveDeputyPresidentDate,
+                ProductionHead = EnableProductionHead ? ProductionHead.Trim() : string.Empty,
+                ProductionHeadDate = EnableProductionHead ? ProductionHeadDate : null,
+                ProductionVicePresident = EnableProductionVicePresident ? ProductionVicePresident.Trim() : string.Empty,
+                ProductionVicePresidentDate = EnableProductionVicePresident ? ProductionVicePresidentDate : null,
                 ApprovalOpinion = string.IsNullOrWhiteSpace(ApprovalOpinion) ? "同意" : ApprovalOpinion.Trim()
             };
         }

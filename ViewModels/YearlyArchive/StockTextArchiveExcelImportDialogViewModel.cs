@@ -344,7 +344,7 @@ namespace DocMgr.ViewModels.YearlyArchive
             StockTextArchiveExcelBoxValidation validation,
             StockTextArchiveMediaItemDraft? item)
         {
-            var row = CreateBoxFields(validation);
+            var row = CreateBoxFields(validation, item?.MaterialName);
             row.ItemName = item?.ContentDesc ?? string.Empty;
             row.CopyCountText = item == null ? string.Empty : item.ContentCount.ToString();
             row.ConfidentialLevel = item?.ConfidentialLevel ?? string.Empty;
@@ -375,7 +375,8 @@ namespace DocMgr.ViewModels.YearlyArchive
         }
 
         private static StockTextArchiveExcelImportRowViewModel CreateBoxFields(
-            StockTextArchiveExcelBoxValidation validation)
+            StockTextArchiveExcelBoxValidation validation,
+            string? materialName = null)
         {
             return new StockTextArchiveExcelImportRowViewModel
             {
@@ -384,7 +385,9 @@ namespace DocMgr.ViewModels.YearlyArchive
                 Year = validation.Box.Year,
                 ProjectName = validation.Box.ProjectName,
                 ProjectCode = validation.Box.ProjectCode,
-                MaterialName = validation.Box.MaterialName,
+                MaterialName = string.IsNullOrWhiteSpace(materialName)
+                    ? validation.Box.MaterialName
+                    : materialName.Trim(),
                 SourceType = validation.Box.SourceType,
                 ProvideUnit = validation.Box.ProvideUnit,
                 ArchivePurpose = validation.Box.ArchivePurpose,

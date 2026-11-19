@@ -141,16 +141,36 @@ namespace DocMgr.Services.YearlyArchive
                     return StockOpticalDiscDirectFilingResult.Fail($"电子袋号 [{discCode}] 已作为光盘编号登记，请稍后重试。");
                 }
 
-                ProjectInfo project = EnsureProject(request);
+                var distinctProjects = request.Materials
+                    .Select(material => EffectiveProjectName(material, request))
+                    .Where(name => !string.IsNullOrWhiteSpace(name))
+                    .Distinct(StringComparer.Ordinal)
+                    .ToList();
+                bool singleProject = distinctProjects.Count <= 1;
+                var projectCache = new Dictionary<string, ProjectInfo>(StringComparer.Ordinal);
                 string fullLocation = await _hardDiskMediaService.ResolveDataInStockFullLocationAsync(
                     request.StorageLocation,
                     CabinetHardDiskSlotCategoryAssignment.CategoryDataOpticalDisc);
-                int existingBagCount = await CountExistingOpticalDiscBagsAsync(project.ProjectName, request.Year.Trim());
+                int existingBagCount = singleProject && distinctProjects.Count == 1
+                    ? await CountExistingOpticalDiscBagsAsync(distinctProjects[0], request.Year.Trim())
+                    : 0;
                 var savedRecords = new List<YearlyArchiveRegisterRecord>();
                 var pathByMediaItemId = new Dictionary<int, string>();
 
                 foreach (var material in request.Materials)
                 {
+                    string projectName = EffectiveProjectName(material, request);
+                    if (!projectCache.TryGetValue(projectName, out ProjectInfo? cachedProject))
+                    {
+                        cachedProject = EnsureProject(
+                            request.Year,
+                            projectName,
+                            singleProject ? request.ProjectCode : string.Empty);
+                        projectCache[projectName] = cachedProject;
+                    }
+
+                    ProjectInfo project = cachedProject;
+
                     var record = await CreateRegisterRecordAsync(request, project, currentUser, material);
                     await _archiveRegisterRepository.SaveOrUpdateRecordGraphAsync(record);
                     var persisted = await _archiveRegisterRepository.GetByFormNoWithDetailsAsync(record.FormNo)
@@ -178,10 +198,18 @@ namespace DocMgr.Services.YearlyArchive
                 }
 
                 string operatorName = currentUser?.RealName?.Trim() ?? "资料管理员";
-                string bagRemark = existingBagCount > 0
-                    ? $"{ArchiveRegisterDomainValues.SourceTypeStockDirect}；同项目第 {existingBagCount + 1} 袋。"
-                    : ArchiveRegisterDomainValues.SourceTypeStockDirect;
-                string contentSummary = string.Join("；", request.Materials.Select(item => item.MaterialName.Trim()));
+                string bagRemark = !singleProject
+                    ? $"{ArchiveRegisterDomainValues.SourceTypeStockDirect}；含项目 {string.Join("、", distinctProjects)}。"
+                    : existingBagCount > 0
+                        ? $"{ArchiveRegisterDomainValues.SourceTypeStockDirect}；同项目第 {existingBagCount + 1} 袋。"
+                        : ArchiveRegisterDomainValues.SourceTypeStockDirect;
+                string contentSummary = !singleProject
+                    ? string.Join("；", request.Materials.Select(item =>
+                        $"{EffectiveProjectName(item, request)}/{item.MaterialName.Trim()}"))
+                    : string.Join("；", request.Materials.Select(item => item.MaterialName.Trim()));
+                string bagProjectName = singleProject && distinctProjects.Count == 1
+                    ? distinctProjects[0]
+                    : string.Empty;
                 var mediaItemIds = pathByMediaItemId.Keys.ToList();
 
                 var submission = new ElectronicArchiveSubmissionRequest
@@ -191,13 +219,20 @@ namespace DocMgr.Services.YearlyArchive
                         ElectronicArchiveNo = electronicNo,
                         Year = DateTime.Now.Year.ToString(),
                         StorageCarrierType = ArchiveFilingBusinessRules.DefaultOpticalDiscBagCarrierType,
-                        StoragePath = string.Join("\\", new[]
-                        {
-                            string.Empty,
-                            ElectronicFilingStoragePathSupport.SanitizePathSegment(request.Year, "未知年度"),
-                            ElectronicFilingStoragePathSupport.SanitizePathSegment(project.ProjectName, "未知项目"),
-                            string.Empty
-                        }),
+                        StoragePath = string.IsNullOrWhiteSpace(bagProjectName)
+                            ? string.Join("\\", new[]
+                            {
+                                string.Empty,
+                                ElectronicFilingStoragePathSupport.SanitizePathSegment(request.Year, "未知年度"),
+                                string.Empty
+                            })
+                            : string.Join("\\", new[]
+                            {
+                                string.Empty,
+                                ElectronicFilingStoragePathSupport.SanitizePathSegment(request.Year, "未知年度"),
+                                ElectronicFilingStoragePathSupport.SanitizePathSegment(bagProjectName, "未知项目"),
+                                string.Empty
+                            }),
                         StorageLocation = fullLocation,
                         LinkedMediumCodes = string.Empty,
                         Disposition = ArchiveRegisterDomainValues.ElectronicDispositionRetain,
@@ -258,7 +293,7 @@ namespace DocMgr.Services.YearlyArchive
                 errors.Add("年度必须是四位数字。");
             }
 
-            if (string.IsNullOrWhiteSpace(request.ProjectName))
+            if (!request.AssignByYear && string.IsNullOrWhiteSpace(request.ProjectName))
             {
                 errors.Add("项目名称不能为空。");
             }
@@ -289,11 +324,15 @@ namespace DocMgr.Services.YearlyArchive
                 errors.Add("请选择有效的库管模式。");
             }
 
-            if (request.AssignByFolder
+            if ((request.AssignByFolder || request.AssignByProject || request.AssignByYear)
                 && (request.ExcludedFolderCount > 0 || request.LooseFileCount > 0)
                 && !request.IgnoredContentAcknowledged)
             {
-                errors.Add("还有未纳入的文件夹或资料所属目录散文件。请纳入，或勾选确认忽略后再立档。");
+                errors.Add(request.AssignByYear
+                    ? "还有未纳入的子项或年度、项目、资料目录中的散文件。请纳入，或勾选确认忽略后再立档。"
+                    : request.AssignByProject
+                        ? "还有未纳入的子项或项目目录、资料目录中的散文件。请纳入，或勾选确认忽略后再立档。"
+                        : "还有未纳入的文件夹或资料所属目录散文件。请纳入，或勾选确认忽略后再立档。");
             }
 
             if (request.AssignByExtension
@@ -309,11 +348,18 @@ namespace DocMgr.Services.YearlyArchive
                     ? "请至少纳入一个后缀作为资料子项。"
                     : request.AssignByFolder
                         ? "请至少纳入一个文件夹作为资料子项。"
-                        : "请先扫描光盘目录。");
+                        : request.AssignByProject || request.AssignByYear
+                            ? "请至少纳入一个资料子项。"
+                            : "请先扫描光盘目录。");
             }
             else if (request.Materials.Any(material => string.IsNullOrWhiteSpace(material.MaterialName)))
             {
                 errors.Add("资料名称不能为空。");
+            }
+            else if (request.AssignByYear
+                && request.Materials.Any(material => string.IsNullOrWhiteSpace(EffectiveProjectName(material, request))))
+            {
+                errors.Add("项目名称不能为空。");
             }
             else if (request.Materials.Any(material => material.Items == null || material.Items.Count == 0))
             {
@@ -324,22 +370,27 @@ namespace DocMgr.Services.YearlyArchive
                 var catalogPaths = new List<string>();
                 foreach (var material in request.Materials)
                 {
+                    string projectName = EffectiveProjectName(material, request);
                     var itemNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                     foreach (var item in material.Items)
                     {
-                        string prefix = $"资料「{material.MaterialName}」子项「{item.ItemName}」";
+                        string prefix = request.AssignByYear
+                            ? $"项目「{projectName}」资料「{material.MaterialName}」子项「{item.ItemName}」"
+                            : $"资料「{material.MaterialName}」子项「{item.ItemName}」";
                         if (string.IsNullOrWhiteSpace(item.ItemName))
                         {
                             errors.Add($"{prefix}：子项名称不能为空。");
                         }
                         else if (!itemNames.Add(item.ItemName.Trim()))
                         {
-                            errors.Add($"资料「{material.MaterialName.Trim()}」下子项名称「{item.ItemName.Trim()}」重复。");
+                            errors.Add(request.AssignByYear
+                                ? $"项目「{projectName}」资料「{material.MaterialName.Trim()}」下子项名称「{item.ItemName.Trim()}」重复。"
+                                : $"资料「{material.MaterialName.Trim()}」下子项名称「{item.ItemName.Trim()}」重复。");
                         }
 
                         catalogPaths.Add(StockOpticalDiscDirectFilingDirectorySupport.BuildCatalogPath(
                             request.Year,
-                            request.ProjectName,
+                            projectName,
                             material.MaterialName,
                             item.ItemName));
 
@@ -400,9 +451,18 @@ namespace DocMgr.Services.YearlyArchive
             return errors;
         }
 
-        private ProjectInfo EnsureProject(StockOpticalDiscDirectFilingRequest request)
+        private static string EffectiveProjectName(
+            StockOpticalDiscMaterialDraft material,
+            StockOpticalDiscDirectFilingRequest request)
         {
-            var existing = FindProject(request.Year, request.ProjectName);
+            return string.IsNullOrWhiteSpace(material.ProjectName)
+                ? request.ProjectName?.Trim() ?? string.Empty
+                : material.ProjectName.Trim();
+        }
+
+        private ProjectInfo EnsureProject(string year, string projectName, string? projectCode)
+        {
+            var existing = FindProject(year, projectName);
             if (existing != null)
             {
                 return existing;
@@ -410,13 +470,13 @@ namespace DocMgr.Services.YearlyArchive
 
             var project = new ProjectInfo
             {
-                ProjectName = request.ProjectName.Trim(),
-                ProjectCode = request.ProjectCode?.Trim() ?? string.Empty,
-                ImplementYear = request.Year.Trim(),
+                ProjectName = projectName.Trim(),
+                ProjectCode = projectCode?.Trim() ?? string.Empty,
+                ImplementYear = year.Trim(),
                 Remark = ArchiveRegisterDomainValues.SourceTypeStockDirect
             };
             _projectService.AddProject(project);
-            return FindProject(request.Year, request.ProjectName)
+            return FindProject(year, projectName)
                 ?? throw new InvalidOperationException("新建项目后未能读取到项目信息。");
         }
 

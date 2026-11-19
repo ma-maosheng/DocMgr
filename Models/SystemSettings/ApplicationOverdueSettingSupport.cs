@@ -52,6 +52,14 @@ namespace DocMgr.Models.SystemSettings
         }
 
         /// <summary>
+        /// 达到逾期作废时限的那一天（当天的 0 点）。当天=申请日当天，7 天=第 7 个自然日，30 天=第 30 个自然日。
+        /// </summary>
+        public static DateTime ResolveEligibleOn(DateTime applyDate, string? settingCode)
+        {
+            return applyDate.Date.AddDays(GetAdminForceVoidWaitDays(settingCode));
+        }
+
+        /// <summary>
         /// 判断申请单是否已达到资料管理员强制作废时限。
         /// </summary>
         public static bool IsEligibleForAdminForceVoid(DateTime applyDate, string? settingCode, DateTime? asOf = null)

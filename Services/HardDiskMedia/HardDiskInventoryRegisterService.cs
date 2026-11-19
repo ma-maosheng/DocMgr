@@ -106,11 +106,13 @@ public sealed class HardDiskInventoryRegisterService : IHardDiskInventoryRegiste
             Items = BuildItems(media, items, now)
         };
 
-        _repository.AddRecord(record);
-        await _repository.SaveChangesAsync();
-
-        LockMedia(record, media, now);
-        await _repository.SaveChangesAsync();
+        await _repository.ExecuteInTransactionAsync(async () =>
+        {
+            _repository.AddRecord(record);
+            await _repository.SaveChangesAsync();
+            LockMedia(record, media, now);
+            await _repository.SaveChangesAsync();
+        });
 
         _repository.ClearChangeTracker();
         return (await _repository.GetRecordByIdAsync(record.Id))!;
@@ -161,9 +163,12 @@ public sealed class HardDiskInventoryRegisterService : IHardDiskInventoryRegiste
             existing.Items.Add(item);
         }
 
-        await _repository.SaveChangesAsync();
-        LockMedia(existing, media, now);
-        await _repository.SaveChangesAsync();
+        await _repository.ExecuteInTransactionAsync(async () =>
+        {
+            await _repository.SaveChangesAsync();
+            LockMedia(existing, media, now);
+            await _repository.SaveChangesAsync();
+        });
 
         _repository.ClearChangeTracker();
         return (await _repository.GetRecordByIdAsync(existing.Id))!;
@@ -356,18 +361,11 @@ public sealed class HardDiskInventoryRegisterService : IHardDiskInventoryRegiste
                 })
                 .ToList();
 
-            var media = await LoadAndValidateMediaAsync(
+            await LoadAndValidateMediaAsync(
                 existing.RegisterKind,
                 drafts,
                 excludeRecordId: existing.Id,
                 allowPostRelocationDamageStatus: false);
-
-            ApplyInventoryRegisterLedgerEffects(
-                existing,
-                media,
-                operatorName,
-                now,
-                descriptionPrefix: "盘库登记(迁档确认)");
 
             existing.DamagedDiskRelocationConfirmed = true;
             existing.DamagedDiskRelocationConfirmedAt = now;
@@ -443,7 +441,7 @@ public sealed class HardDiskInventoryRegisterService : IHardDiskInventoryRegiste
         DateTime now = DateTime.Now;
         string operatorName = ResolveUserDisplayName(currentUser);
 
-        // 损坏登记：档口/状态已在「确认可上传附件信息」时写入；此处幂等补齐并办结。
+        // 损坏登记的档口和状态在办结时写入。确认可上传只记录已勾选迁档，避免勾错后无法撤回却已经改了台账。
         ApplyInventoryRegisterLedgerEffects(
             existing,
             media,
@@ -461,7 +459,7 @@ public sealed class HardDiskInventoryRegisterService : IHardDiskInventoryRegiste
     }
 
     /// <summary>
-    /// 写入盘库登记台账效应（状态/档口/流转）。已与目标一致时跳过，保证确认可上传与办结可幂等复用。
+    /// 写入盘库登记台账效应（状态/档口/流转）。已与目标一致时跳过，办结可重复调用。
     /// </summary>
     private void ApplyInventoryRegisterLedgerEffects(
         HardDiskInventoryRegisterRecord record,

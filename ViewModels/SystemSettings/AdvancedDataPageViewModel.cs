@@ -89,7 +89,7 @@ namespace DocMgr.ViewModels.SystemSettings
             SyncModelToDictionaryCommand = new RelayCommand(async _ => await _pageDb.RunAsync(SyncModelToDictionaryAsync), _ => !IsBusy && CanExecuteMaintenance);
             ExportDisplayNamesToDictionaryCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ExportDisplayNamesToDictionaryAsync), _ => !IsBusy && CanExecuteMaintenance);
             ApplyDictionaryToDatabaseCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ApplyDictionaryToDatabaseAsync), _ => !IsBusy && CanExecuteMaintenance);
-            ExportToExcelCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ExportToExcelAsync), _ => !IsBusy && HasSelectedTable);
+            ExportToExcelCommand = new RelayCommand(async _ => await _pageDb.RunAsync(ExportToExcelAsync), _ => !IsBusy && CanExecuteMaintenance && HasSelectedTable);
             BackupDatabaseCommand = new RelayCommand(async _ => await _pageDb.RunAsync(BackupDatabaseAsync), _ => !IsBusy && CanExecuteMaintenance);
             RestoreDatabaseCommand = new RelayCommand(async _ => await _pageDb.RunAsync(RestoreDatabaseAsync), _ => !IsBusy && CanExecuteMaintenance);
             DropDatabaseCommand = new RelayCommand(async _ => await _pageDb.RunAsync(DropDatabaseAsync), _ => !IsBusy && CanExecuteMaintenance);
@@ -257,8 +257,8 @@ namespace DocMgr.ViewModels.SystemSettings
 
         /// <summary>备份/还原/删除提示。</summary>
         public string DatabaseBackupHintText => _databaseBackupService.IsNetworkPath
-            ? "当前为远程 SQL Server。备份、还原或删除当前库前请先让其他终端退出。删除会永久去掉该库；下次启动时，若账号有建库权限，会按迁移重建空库。"
-            : "备份生成 .bak 文件。删除当前库会永久去掉全部业务数据，程序随后退出；下次启动时，若账号有建库权限，会按迁移重建空库。";
+            ? "当前为远程 SQL Server。备份文件必须选数据库服务器自己能写到的磁盘，不能选这台电脑上的文件夹。备份、还原或删除当前库前请先让其他终端退出。删除会永久去掉该库；下次启动时，若账号有建库权限，会按迁移重建空库。"
+            : "备份生成 .bak 文件，路径必须是这台数据库服务器自己能写到的磁盘。删除当前库会永久去掉全部业务数据，程序随后退出；下次启动时，若账号有建库权限，会按迁移重建空库。";
 
         public RelayCommand RefreshCommand { get; }
         public RelayCommand DeleteSelectedCommand { get; }

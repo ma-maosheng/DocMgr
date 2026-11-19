@@ -2781,10 +2781,6 @@ namespace DocMgr.Data.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Remark")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("ServerPath")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -4247,6 +4243,9 @@ namespace DocMgr.Data.Migrations
                     b.HasIndex("BoxLocationCode");
 
                     b.HasIndex("ContainerCode");
+
+                    b.HasIndex("FilingFactNo")
+                        .IsUnique();
 
                     b.HasIndex("FormNo");
 

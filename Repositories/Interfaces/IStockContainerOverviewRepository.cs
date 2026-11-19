@@ -10,7 +10,7 @@ namespace DocMgr.Repositories.Interfaces
     {
         Task<IReadOnlyList<int>> GetDistinctYearsAsync();
 
-        Task<IReadOnlyList<StockContainerOverviewRow>> SearchContainersAsync(
+        Task<StockContainerSearchResult> SearchContainersAsync(
             StockContainerSearchCriteria criteria);
 
         Task<IReadOnlyList<StockContainerContentItem>> GetContentsAsync(

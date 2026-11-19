@@ -217,6 +217,12 @@
                     Margin="0,0,8,0"
                     Style="{StaticResource ApprovalSettingsActionButtonStyle}"
                     Command="{Binding ExportRulesCommand}"/>
+            <Button DockPanel.Dock="Right"
+                    Content="导出 Word 文档"
+                    Width="128"
+                    Margin="0,0,8,0"
+                    Style="{StaticResource ApprovalSettingsActionButtonStyle}"
+                    Command="{Binding ExportWordCommand}"/>
         </DockPanel>
     </Grid>
 </Page>

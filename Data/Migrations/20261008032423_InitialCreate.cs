@@ -1636,7 +1636,6 @@ namespace DocMgr.Data.Migrations
                     Year = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Reason = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     OtherRequests = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Remark = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     ProofMaterialNote = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     TargetRegisterRecordId = table.Column<int>(type: "int", nullable: true),
                     TargetRegisterFormNo = table.Column<string>(type: "nvarchar(max)", nullable: false),
@@ -3202,6 +3201,12 @@ namespace DocMgr.Data.Migrations
                 name: "IX_YearlyArchiveFilingFacts_ContainerCode",
                 table: "YearlyArchiveFilingFacts",
                 column: "ContainerCode");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_YearlyArchiveFilingFacts_FilingFactNo",
+                table: "YearlyArchiveFilingFacts",
+                column: "FilingFactNo",
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_YearlyArchiveFilingFacts_FormNo",

@@ -311,7 +311,7 @@
                             <viewShared:ApprovalHandoverWorkspaceShell.SignatureContent>
                                 <viewShared:ApprovalSignatureCardsControl
                                     ShowApprovalOpinion="True"
-                                    SignatureHintText="完好归还仅需部门负责人签字；灭失须借出时全部审核审批人签字。签字日期可改，不能早于签批单首次打印日期。"/>
+                                    SignatureHintText="签字人按审核审批规则逐项显示。签字日期可改，不能早于签批单首次打印日期。"/>
                             </viewShared:ApprovalHandoverWorkspaceShell.SignatureContent>
 
                             <viewShared:ApprovalHandoverWorkspaceShell.MidStepExtraContent>
